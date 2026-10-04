@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight, Crosshair, Cuboid, Download, Eye, EyeOff, Fl
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type Dispatch, type DragEvent, type MouseEvent as ReactMouseEvent, type MutableRefObject, type PointerEvent as ReactPointerEvent, type ReactNode, type SetStateAction, type WheelEvent as ReactWheelEvent } from "react";
 import { objectSnapOffset, shiftSnapBox, type ObjectSnapGuide, type SnapBox } from "@/lib/objectSnap";
 import { useMovablePanel, type MovablePanelOptions } from "@/lib/useMovablePanel";
-import { computeSectionPlaneVector, DEFAULT_SECTION_SETTINGS, getSectionBounds, sectionFineWindow, type SectionPlaneAxis, type SectionPlaneSettings } from "@/lib/sectionView";
+import { computeSectionPlaneVector, DEFAULT_SECTION_SETTINGS, getSectionBounds, SECTION_AXES_SHOWN, sectionAxisLetter, sectionFineWindow, type SectionPlaneAxis, type SectionPlaneSettings } from "@/lib/sectionView";
 import * as THREE from "three";
 import { Brush, Evaluator, HOLLOW_INTERSECTION } from "three-bvh-csg";
 import { acceleratedRaycast, computeBoundsTree, disposeBoundsTree } from "three-mesh-bvh";
@@ -7947,19 +7947,22 @@ export function WorkplaneViewport({
                       <div className="section-popover-axis-row">
                         <span className="section-label">{t("camera.sectionAxis")}</span>
                         <div className="section-axis-buttons" role="radiogroup" aria-label={t("camera.sectionAxis")}>
-                          {(["x", "y", "z"] as const).map((ax) => (
-                            <button
-                              key={ax}
-                              type="button"
-                              role="radio"
-                              aria-checked={sectionSettings.axis === ax}
-                              className={`section-axis-btn ${sectionSettings.axis === ax ? "active" : ""}`}
-                              onClick={() => handleSelectSectionAxis(ax)}
-                              title={t(ax === "x" ? "camera.sectionAxisX" : ax === "y" ? "camera.sectionAxisY" : "camera.sectionAxisZ")}
-                            >
-                              {ax.toUpperCase()}
-                            </button>
-                          ))}
+                          {SECTION_AXES_SHOWN.map((ax) => {
+                            const letter = sectionAxisLetter(ax);
+                            return (
+                              <button
+                                key={ax}
+                                type="button"
+                                role="radio"
+                                aria-checked={sectionSettings.axis === ax}
+                                className={`section-axis-btn ${sectionSettings.axis === ax ? "active" : ""}`}
+                                onClick={() => handleSelectSectionAxis(ax)}
+                                title={t(`camera.sectionAxis${letter}`)}
+                              >
+                                {letter}
+                              </button>
+                            );
+                          })}
                         </div>
                         <button
                           type="button"
