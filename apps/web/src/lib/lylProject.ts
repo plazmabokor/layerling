@@ -7,6 +7,7 @@ import { importedShapeFromObj } from "@/lib/objImport";
 import { normalizeProjectAsset, sha256Hex } from "@/lib/projectAssets";
 import { canonicalizeShape } from "@/lib/workplaneShapes";
 import { normalizeSketchStroke } from "@/lib/sketchStroke";
+import { normalizeTextKeyring } from "@/lib/textGeometry";
 import { normalizeNotes } from "@/lib/workplaneNotes";
 import { importedShapeFromStl } from "@/lib/stlImport";
 import { importedShapeFromSvg } from "@/lib/svgImport";
@@ -1240,6 +1241,10 @@ function validateShapeDefinition(definition: Record<string, unknown>, label: str
   }
   if (definition.layeredText !== undefined && typeof definition.layeredText !== "boolean") {
     throw new Error(`${label}.layeredText must be true or false`);
+  }
+  // A name tag's key ring hole (#215): a side, the hole's diameter and how far beyond the letters it sits.
+  if (definition.textKeyring !== undefined && !normalizeTextKeyring(definition.textKeyring)) {
+    throw new Error(`${label}.textKeyring must be a side, a diameter above 0 and an offset`);
   }
   if (definition.parametricSource !== undefined) {
     // Was der Koerper vor dem Drehen war. Fehlt oder stimmt hier etwas nicht,

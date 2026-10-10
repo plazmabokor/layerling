@@ -720,7 +720,7 @@ export const tools = [
   },
   {
     name: "layerling_layer_text",
-    description: "Layered text for a multicolour print (#215): one text as a stack of bodies - the letters on top, under them the same letters a little wider in another colour, at the bottom a plate wider still, usually as a silhouette without the holes in the letters. Every layer is an ordinary text with a 'Wider' fill (so each has its own colour, height and edge treatments) and the stack is a bundle flagged as layered text, whose properties panel edits words, font and layers together. Pass the id of a text (it is replaced by the stack) or of such a bundle (it is built again); layers top to bottom, each with grow (mm wider than the letters, 0 for the letters), height, color and silhouette. Left out, the layers stay as they are, or a new stack takes the classic three: white letters, a red rim 1.5 mm wider, a dark plate 3 mm wider without holes. With names, one stack per name is made instead, laid out in rows under the first, each as its own object - a list of name tags in one go.",
+    description: "Layered text for a multicolour print (#215): one text as a stack of bodies - the letters on top, under them the same letters a little wider in another colour, at the bottom a plate wider still, usually as a silhouette without the holes in the letters. Every layer is an ordinary text with a 'Wider' fill (so each has its own colour, height and edge treatments) and the stack is a bundle flagged as layered text, whose properties panel edits words, font and layers together. Pass the id of a text (it is replaced by the stack) or of such a bundle (it is built again); layers top to bottom, each with grow (mm wider than the letters, 0 for the letters), height, color and silhouette. Left out, the layers stay as they are, or a new stack takes the classic three: white letters, a red rim 1.5 mm wider, a dark plate 3 mm wider without holes. letterSize sets how tall the capital letters stand in mm, through all layers; new words or another font keep the letter size, so the tag grows with its words. keyring { side, diameter } gives the bottom layer a round ear with a key ring hole on the left, right or top, cut through every layer it reaches; it follows the words, the letter size and the font, and false takes it off again. With names, one stack per name is made instead, laid out in rows under the first, each as its own object - a list of name tags in one go.",
     inputSchema: {
       ...editorTargetSchema,
       properties: {
@@ -728,6 +728,20 @@ export const tools = [
         id: { type: "string", description: "A text, or a layered-text bundle to build again." },
         text: { type: "string", description: "New words for every layer." },
         font: { type: "string", description: "New font for every layer: a built-in name or a font of one's own by name or id." },
+        letterSize: { type: "number", description: "Height of the capital letters in mm, the same in every layer. Left out, the letters keep their size." },
+        keyring: {
+          description: "A key ring hole: { side, diameter } puts it on (an ear on the bottom layer, the hole through every layer it reaches), true puts a 4 mm hole on the left, false takes it off. Left out, it stays as it is.",
+          anyOf: [
+            {
+              type: "object",
+              properties: {
+                side: { type: "string", enum: ["left", "right", "top"], description: "Where the ear sits, seen from above (default left)." },
+                diameter: { type: "number", description: "The hole's diameter in mm (default 4)." },
+              },
+            },
+            { type: "boolean" },
+          ],
+        },
         layers: {
           type: "array",
           maxItems: 6,

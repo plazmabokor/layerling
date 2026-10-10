@@ -1,7 +1,8 @@
+import * as THREE from "three";
 import { normalizeSketchStroke } from "@/lib/sketchStroke";
-import { textFillExtent, textLetterBox } from "@/lib/textGeometry";
+import { DEFAULT_KEYRING_DIAMETER, keyringEarRadius, MAX_KEYRING_DIAMETER, MIN_KEYRING_DIAMETER, TEXT_KEYRING_SIDES, textFillExtent, textKeyringOf, textKeyringReach, textLetterBox, textLetterOffset } from "@/lib/textGeometry";
 import { shapeDepth, shapeWidth } from "@/lib/workplaneShapes";
-import type { SketchStroke, WorkplaneShape } from "@/types/layerling";
+import type { SketchStroke, TextKeyring, TextKeyringSide, WorkplaneShape } from "@/types/layerling";
 
 /**
  * Layered text (#215): one text as a stack of bodies for a multicolour print - the letters on
@@ -21,6 +22,8 @@ export type TextLayer = {
 };
 
 export const MAX_TEXT_LAYERS = 6;
+/** A name tag has its letters and at least one layer under them; "–" stops there. */
+export const MIN_NAME_TAG_LAYERS = 2;
 export const MIN_TEXT_LAYER_HEIGHT = 0.2;
 export const MAX_TEXT_LAYER_GROW = 20;
 
@@ -49,33 +52,107 @@ export function normalizeTextLayers(layers: unknown): TextLayer[] | null {
   return layers.map((layer, index) => normalizeTextLayer((layer && typeof layer === "object" ? layer : {}) as Partial<TextLayer>, DEFAULT_TEXT_LAYERS[Math.min(index, DEFAULT_TEXT_LAYERS.length - 1)]));
 }
 
+/** Colours a new layer takes, the first one the tag does not use yet - so the new layer shows. */
+const NEW_LAYER_COLORS = ["#2b2b2b", "#f2cf10", "#0098c7", "#33983d", "#ffffff", "#d41721", "#6e2786"];
+
+/**
+ * "+" (#215): a new layer under the lowest one, as much wider again as that one was over its
+ * neighbour, as high as it and with or without holes as it, in a colour not used yet. At the
+ * most layers the list stays as it is.
+ */
+export function addTextLayer(layers: readonly TextLayer[]): TextLayer[] {
+  if (layers.length >= MAX_TEXT_LAYERS || layers.length === 0) return [...layers];
+  const last = layers[layers.length - 1];
+  const step = layers.length >= 2 ? Math.max(0.5, last.grow - layers[layers.length - 2].grow) : 1.5;
+  const used = new Set(layers.map((layer) => layer.color.toLowerCase()));
+  const color = NEW_LAYER_COLORS.find((candidate) => !used.has(candidate)) ?? last.color;
+  return [...layers, { ...last, grow: Math.round(Math.min(MAX_TEXT_LAYER_GROW, last.grow + step) * 1000) / 1000, color }];
+}
+
+/** "–" (#215): the lowest layer goes, down to the letters and one layer under them. */
+export function removeTextLayer(layers: readonly TextLayer[]): TextLayer[] {
+  return layers.length > MIN_NAME_TAG_LAYERS ? layers.slice(0, -1) : [...layers];
+}
+
+/** A name tag's key ring hole as the card sets it: the side and the hole's diameter. */
+export type NameTagKeyring = { side: TextKeyringSide; diameter: number };
+
+export function normalizeNameTagKeyring(value: unknown): NameTagKeyring | null {
+  if (!value || typeof value !== "object") return null;
+  const candidate = value as Partial<NameTagKeyring>;
+  const diameter = Number(candidate.diameter ?? DEFAULT_KEYRING_DIAMETER);
+  return {
+    side: TEXT_KEYRING_SIDES.includes(candidate.side as TextKeyringSide) ? candidate.side as TextKeyringSide : "left",
+    diameter: Number.isFinite(diameter) ? Math.min(MAX_KEYRING_DIAMETER, Math.max(MIN_KEYRING_DIAMETER, diameter)) : DEFAULT_KEYRING_DIAMETER,
+  };
+}
+
+/** A shape's own (x, y, z) offset in the world: its turn applied, as the scene turns it. */
+function turned(shape: WorkplaneShape, offset: { x: number; z: number }) {
+  const euler = new THREE.Euler(
+    THREE.MathUtils.degToRad(shape.rotationX ?? 0),
+    THREE.MathUtils.degToRad(shape.rotation ?? 0),
+    THREE.MathUtils.degToRad(shape.rotationZ ?? 0),
+    "XYZ",
+  );
+  return new THREE.Vector3(offset.x, 0, offset.z).applyEuler(euler);
+}
+
 /** The letters as a text without any fill: what every layer is built from. */
 export function textLayerSource(text: WorkplaneShape): WorkplaneShape {
   const letters = textLetterBox(text);
-  const { textStroke: _stroke, textSilhouette: _silhouette, ...rest } = text;
+  // Beside an ear (#215) the letters sit off the middle of the box; the source stands where they are.
+  const middle = turned(text, textLetterOffset(text));
+  const { textStroke: _stroke, textSilhouette: _silhouette, textKeyring: _keyring, ...rest } = text;
   // A layer is named "<name> <number>"; the stack's name is the part before the number.
-  return { ...rest, name: text.name.replace(/\s\d+$/, ""), width: letters.width, depth: letters.depth, size: Math.max(letters.width, letters.depth) };
+  return {
+    ...rest,
+    name: text.name.replace(/\s\d+$/, ""),
+    x: round(text.x + middle.x),
+    z: round(text.z + middle.z),
+    elevation: round((text.elevation ?? 0) + middle.y),
+    width: letters.width,
+    depth: letters.depth,
+    size: Math.max(letters.width, letters.depth),
+  };
 }
 
 const growStroke = (grow: number): SketchStroke | undefined => (grow > 0 ? { width: grow, align: "grow", join: "round", cap: "flat" } : undefined);
+
+/**
+ * The key ring hole (#215) of each layer, top to bottom: the bottom layer carries the ear, the hole
+ * sits as far beyond the letters as the bottom layer reaches plus the ear's radius, and a layer
+ * above gets the hole only where it reaches that far itself.
+ */
+function layerKeyrings(layers: readonly TextLayer[], keyring: NameTagKeyring | null): (TextKeyring | undefined)[] {
+  if (!keyring || !layers.length) return layers.map(() => undefined);
+  const bottom = layers[layers.length - 1];
+  const offset = round(textFillExtent({ textStroke: growStroke(bottom.grow) }) + keyringEarRadius(keyring.diameter));
+  return layers.map((layer, index) => {
+    if (index === layers.length - 1) return { side: keyring.side, diameter: keyring.diameter, offset, ear: true };
+    const reach = textFillExtent({ textStroke: growStroke(layer.grow) });
+    return offset - keyring.diameter / 2 < reach ? { side: keyring.side, diameter: keyring.diameter, offset } : undefined;
+  });
+}
 
 /**
  * The layers as texts standing in the world, bottom layer first on the source's elevation and
  * each next one on top of the one below; all share the source's letters, place and turn, so the
  * letters line up through the stack. `ids` keep the layers' ids when a stack is built again.
  */
-export function textLayerShapes(source: WorkplaneShape, layers: readonly TextLayer[], ids: (string | undefined)[] = []): WorkplaneShape[] {
+export function textLayerShapes(source: WorkplaneShape, layers: readonly TextLayer[], ids: (string | undefined)[] = [], keyring: NameTagKeyring | null = null): WorkplaneShape[] {
   const letters = textLayerSource(source);
   const base = letters.elevation ?? 0;
+  // Curved text has no key ring hole.
+  const keyrings = layerKeyrings(layers, letters.textCurved ? null : keyring);
   const bottomUp = [...layers].reverse();
   let elevation = base;
   const shapes = bottomUp.map((layer, fromBottom) => {
     const index = layers.length - 1 - fromBottom;
     const stroke = growStroke(layer.grow);
     const extent = textFillExtent({ textStroke: stroke });
-    const width = round(letters.width + 2 * extent);
-    const depth = round(letters.depth + 2 * extent);
-    const shape: WorkplaneShape = {
+    const layerKeyring = keyrings[index];
+    let shape: WorkplaneShape = {
       ...letters,
       id: ids[index] ?? `${letters.id}-layer-${index + 1}`,
       name: layers.length > 1 ? `${letters.name} ${index + 1}` : letters.name,
@@ -83,24 +160,40 @@ export function textLayerShapes(source: WorkplaneShape, layers: readonly TextLay
       hole: false,
       height: layer.height,
       elevation: round(elevation),
-      width,
-      depth,
-      size: Math.max(width, depth),
+      width: round(letters.width + 2 * extent),
+      depth: round(letters.depth + 2 * extent),
+      size: 0,
       ...(stroke ? { textStroke: stroke } : {}),
       ...(layer.silhouette ? { textSilhouette: true } : {}),
+      ...(layerKeyring ? { textKeyring: layerKeyring } : {}),
     };
+    if (layerKeyring?.ear) {
+      // The ear widens the box on its side; the box moves by half of that, so the letters stay put.
+      const reach = textKeyringReach(shape);
+      shape = {
+        ...shape,
+        width: round(letters.width + 2 * extent + (layerKeyring.side === "top" ? 0 : reach)),
+        depth: round(letters.depth + 2 * extent + (layerKeyring.side === "top" ? reach : 0)),
+      };
+      const middle = turned(shape, textLetterOffset(shape));
+      shape = { ...shape, x: round(letters.x - middle.x), z: round(letters.z - middle.z), elevation: round(elevation - middle.y) };
+    }
+    shape.size = Math.max(shape.width ?? 0, shape.depth ?? 0);
     elevation += layer.height;
     return shape;
   });
   return shapes.reverse();
 }
 
+/** A name tag as its card shows it: the letters, the layers top to bottom, their ids and the key ring hole. */
+export type TextLayerStack = { source: WorkplaneShape; layers: TextLayer[]; ids: string[]; keyring: NameTagKeyring | null };
+
 /**
  * Reads a stack back from its layers (texts standing in the world, any order): the letters
  * without a fill, and the layer settings top to bottom. Null when the shapes are not one text's
  * layers - another kind among them, different words or fonts.
  */
-export function textLayersOf(shapes: WorkplaneShape[]): { source: WorkplaneShape; layers: TextLayer[]; ids: string[] } | null {
+export function textLayersOf(shapes: WorkplaneShape[]): TextLayerStack | null {
   if (!shapes.length || shapes.some((shape) => shape.kind !== "text")) return null;
   const words = new Set(shapes.map((shape) => `${shape.text ?? "TEXT"}\u0000${shape.font ?? "Multilanguage"}\u0000${Boolean(shape.textCurved)}`));
   if (words.size !== 1) return null;
@@ -117,7 +210,10 @@ export function textLayersOf(shapes: WorkplaneShape[]): { source: WorkplaneShape
   // The letters are the same in every layer; the top one is as good a source as any.
   const source = textLayerSource(topDown[0]);
   const bottom = topDown[topDown.length - 1];
-  return { source: { ...source, elevation: bottom.elevation ?? 0 }, layers, ids: topDown.map((shape) => shape.id) };
+  // The key ring hole (#215) is the bottom layer's, where the ear is.
+  const ring = textKeyringOf(bottom);
+  const keyring = ring ? { side: ring.side, diameter: ring.diameter } : null;
+  return { source: { ...source, elevation: bottom.elevation ?? 0 }, layers, ids: topDown.map((shape) => shape.id), keyring };
 }
 
 /** A name tag per line: empty lines dropped, at most `limit` names. */

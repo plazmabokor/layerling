@@ -3,9 +3,9 @@ import type { CrossSection, ManifoldToplevel } from "manifold-3d";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { extrudeOutline, type OutlinePoint } from "@/lib/gearGeometry";
 import { loadedManifoldRuntime, requestManifoldRuntime } from "@/lib/manifoldHandle";
-import { normalizeSketchStroke, strokeRegion, type Keep } from "@/lib/sketchStroke";
-import { createTextGeometry, textGlyphShapes } from "@/lib/textGeometry";
-import type { WorkplaneShape } from "@/types/layerling";
+import { DEFAULT_SKETCH_STROKE, normalizeSketchStroke, strokeRegion, type Keep } from "@/lib/sketchStroke";
+import { createTextGeometry, keyringEarRadius, textGlyphShapes, textKeyringCenter, textKeyringOf } from "@/lib/textGeometry";
+import type { SketchStroke, SketchStrokeAlign, WorkplaneShape } from "@/types/layerling";
 
 /**
  * Fill modes for the Text shape (#215, as Tinkercad's): instead of the filled letters, a line
@@ -18,9 +18,41 @@ import type { WorkplaneShape } from "@/types/layerling";
 
 export type TextFillComponent = { outer: OutlinePoint[]; holes: OutlinePoint[][] };
 
-/** Whether this text is drawn through the fill path at all. */
+/** Whether this text is drawn through the fill path at all - a key ring hole (#215) is cut there too. */
 export function textHasFill(shape: WorkplaneShape) {
-  return shape.kind === "text" && (Boolean(normalizeSketchStroke(shape.textStroke)) || Boolean(shape.textSilhouette));
+  return shape.kind === "text" && (Boolean(normalizeSketchStroke(shape.textStroke)) || Boolean(shape.textSilhouette) || Boolean(textKeyringOf(shape)));
+}
+
+/**
+ * The fill of a plain text in one list, as Tinkercad names it (#215): the filled letters, a line
+ * centred on their outline, a line outside it and a line inside it. "Wider" is the filled letters
+ * grown by the line width, so it reads as filled here and has its own switch.
+ */
+export type TextFillChoice = "filled" | "outline" | "outer" | "inner";
+export const TEXT_FILL_CHOICES: readonly { choice: TextFillChoice; align: SketchStrokeAlign | null }[] = [
+  { choice: "filled", align: null },
+  { choice: "outline", align: "center" },
+  { choice: "outer", align: "outside" },
+  { choice: "inner", align: "inside" },
+];
+
+/** Which entry of the list a text's stroke is. */
+export function textFillChoice(textStroke: unknown): TextFillChoice {
+  const stroke = normalizeSketchStroke(textStroke);
+  if (!stroke || stroke.align === "grow") return "filled";
+  return TEXT_FILL_CHOICES.find((entry) => entry.align === stroke.align)?.choice ?? "filled";
+}
+
+/** The stroke an entry of the list makes; line width and corners stay as they were. */
+export function textStrokeForChoice(choice: TextFillChoice, textStroke: unknown): SketchStroke | undefined {
+  const align = TEXT_FILL_CHOICES.find((entry) => entry.choice === choice)?.align ?? null;
+  if (!align) return undefined;
+  return { ...(normalizeSketchStroke(textStroke) ?? DEFAULT_SKETCH_STROKE), align };
+}
+
+/** The "Wider" switch: the filled letters grown by the line width, or back to the plain letters. */
+export function textStrokeWider(wider: boolean, textStroke: unknown): SketchStroke | undefined {
+  return wider ? { ...(normalizeSketchStroke(textStroke) ?? DEFAULT_SKETCH_STROKE), align: "grow" } : undefined;
 }
 
 const signedArea = (points: OutlinePoint[]) => points.reduce((sum, point, index) => {
@@ -55,7 +87,7 @@ export function textFillComponents(runtime: ManifoldToplevel, shape: WorkplaneSh
     if (!letters.length) return null;
     const region = keep(runtime.CrossSection.union(letters));
     const filled = stroke ? strokeRegion(runtime, keep, region, stroke) : region;
-    const result = keep(filled.simplify(1e-6));
+    const result = keep(withKeyring(runtime, keep, shape, filled).simplify(1e-6));
     if (result.area() <= 1e-9) return null;
     const components: TextFillComponent[] = [];
     for (const piece of result.decompose().map(keep)) {
@@ -70,6 +102,32 @@ export function textFillComponents(runtime: ManifoldToplevel, shape: WorkplaneSh
   } finally {
     new Set(made).forEach((section) => section.delete());
   }
+}
+
+/**
+ * A key ring hole (#215) through the outline, and on the bottom layer the ear round it: a disc
+ * the hole's radius plus the wall, joined to the outline by the hull of the disc and the strip
+ * of the outline nearest to it, so it holds on however the letters end on that side.
+ */
+function withKeyring(runtime: ManifoldToplevel, keep: Keep, shape: WorkplaneShape, filled: CrossSection): CrossSection {
+  const keyring = textKeyringOf(shape);
+  const center = textKeyringCenter(shape);
+  if (!keyring || !center) return filled;
+  const disc = (radius: number) => keep(keep(runtime.CrossSection.circle(radius, 64)).translate([center.x, center.z]));
+  let outline = filled;
+  if (keyring.ear && !filled.isEmpty()) {
+    const radius = keyringEarRadius(keyring.diameter);
+    const { min, max } = filled.bounds();
+    const strip = keyring.side === "top"
+      ? [[min[0], min[1]], [max[0], min[1]], [max[0], min[1] + radius], [min[0], min[1] + radius]]
+      : keyring.side === "right"
+        ? [[max[0] - radius, min[1]], [max[0], min[1]], [max[0], max[1]], [max[0] - radius, max[1]]]
+        : [[min[0], min[1]], [min[0] + radius, min[1]], [min[0] + radius, max[1]], [min[0], max[1]]];
+    const nearest = keep(filled.intersect(keep(new runtime.CrossSection([strip as [number, number][]], "Positive"))));
+    const ear = keep(keep(nearest.add(disc(radius))).hull());
+    outline = keep(filled.add(ear));
+  }
+  return keep(outline.subtract(disc(keyring.diameter / 2)));
 }
 
 /** One piece as a body: the pieces are merged in order, so a piece's triangles stay together. */

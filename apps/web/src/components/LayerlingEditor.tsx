@@ -36,9 +36,9 @@ import { createPyramidGeometry } from "@/lib/pyramidGeometry";
 import { roundSideCount } from "@/lib/roundSideCount";
 import { createThreadGeometry, DEFAULT_THREAD_PROFILE, defaultThreadHeadHeight, normalizeThreadHeadHeight, threadNaturalFootprint, threadSettings } from "@/lib/threadGeometry";
 import { createSpringGeometry } from "@/lib/springGeometry";
-import { curvedTextPatch } from "@/lib/textGeometry";
+import { curvedTextPatch, textLetterSize, textLetterSizePatch } from "@/lib/textGeometry";
 import { textDisplayGeometry } from "@/lib/textFill";
-import { DEFAULT_TEXT_LAYERS, nameTagOffsets, normalizeTextLayers, textLayerShapes, textLayersOf, type TextLayer } from "@/lib/textLayers";
+import { DEFAULT_TEXT_LAYERS, nameTagOffsets, normalizeNameTagKeyring, normalizeTextLayers, textLayerShapes, textLayersOf, type NameTagKeyring, type TextLayer } from "@/lib/textLayers";
 import type { TextLayerPatch } from "@/components/workplane/ShapeInspector";
 import { onManifoldReady, rememberManifoldRuntime, setManifoldLoader } from "@/lib/manifoldHandle";
 import { canApplySketchCornerTreatment } from "@/lib/sketchFilletChamfer";
@@ -205,7 +205,7 @@ import { LanguageSwitch } from "@/components/LanguageSwitch";
 import { ThemeSwitch } from "@/components/ThemeSwitch";
 import { exportLylProject, importLylProject, LYL_CREATED_WITH_VERSION, LYL_MEDIA_TYPE } from "@/lib/lylProject";
 import { simplifyTrianglePositions } from "@/lib/meshSimplify";
-import { displayShapeName, makeShapeFromAsset, sceneShape, shapeAssetLabel, shapeAssetMenuLabel, toolbarShapeAssets } from "@/lib/shapeCatalog";
+import { displayShapeName, libraryShapeAssets, makeShapeFromAsset, nameTagAsset, sceneShape, shapeAssetLabel, shapeAssetMenuLabel, toolbarShapeAssets } from "@/lib/shapeCatalog";
 import { importedShapeFromStl } from "@/lib/stlImport";
 import { exportMeshesToStl } from "@/lib/stlExport";
 import { exportMeshesTo3mf, THREE_MF_MEDIA_TYPE } from "@/lib/threemfExport";
@@ -3628,7 +3628,7 @@ function offersTextLayers(shape: WorkplaneShape | null | undefined) {
  * The text and layers a shape stands for: a plain text is one layer of itself; a layered-text
  * bundle is read from its parts as they stand in the world. Null for anything else.
  */
-function textLayerStack(shape: WorkplaneShape): { source: WorkplaneShape; layers: TextLayer[]; ids: string[] } | null {
+function textLayerStack(shape: WorkplaneShape): { source: WorkplaneShape; layers: TextLayer[]; ids: string[]; keyring: NameTagKeyring | null } | null {
   if (shape.kind === "text") {
     return textLayersOf([shape]);
   }
@@ -3640,15 +3640,62 @@ function textLayerStack(shape: WorkplaneShape): { source: WorkplaneShape; layers
  * A text's layers as one shape: a bundle flagged as layered text, or, with one layer only, that
  * text itself. `keepId` and `name` carry over from the shape it replaces.
  */
-function layeredTextShape(source: WorkplaneShape, layers: readonly TextLayer[], ids: (string | undefined)[], keepId: string, keep: Pick<WorkplaneShape, "locked" | "hidden" | "name">, previousText?: string): WorkplaneShape {
+function layeredTextShape(source: WorkplaneShape, layers: readonly TextLayer[], ids: (string | undefined)[], keepId: string, keep: Pick<WorkplaneShape, "locked" | "hidden" | "name">, previousText?: string, keyring: NameTagKeyring | null = null): WorkplaneShape {
   const words = (source.text ?? "TEXT").trim() || "Text";
   // The stack is named after its words unless somebody gave it a name of its own.
   const name = !keep.name || keep.name === "Bundle" || keep.name === "Text" || keep.name === previousText ? words : keep.name;
-  const parts = textLayerShapes(source, layers, ids);
+  const parts = textLayerShapes(source, layers, ids, keyring);
   if (parts.length === 1) return canonicalizeShape({ ...parts[0], id: keepId, name, locked: keep.locked, hidden: keep.hidden });
   const group = groupedShape(parts);
   if (!group) throw new Error("Could not build the text layers");
   return canonicalizeShape({ ...group, id: keepId, name, groupOperation: "bundle", layeredText: true, locked: keep.locked, hidden: keep.hidden });
+}
+
+/** The letters of a stack with other words, another font or another letter size; the letters keep their size otherwise (#215). */
+function nameTagSource(source: WorkplaneShape, change: { text?: string; font?: string; letterSize?: number }): WorkplaneShape {
+  const next = { ...source, ...(change.text !== undefined ? { text: change.text } : {}), ...(change.font !== undefined ? { font: change.font } : {}) };
+  if (change.text === undefined && change.font === undefined && change.letterSize === undefined) return next;
+  return { ...next, ...textLetterSizePatch(next, change.letterSize ?? textLetterSize(source)) };
+}
+
+/**
+ * One name tag per name (#215), like the given stack and at its letter size, laid out in rows and
+ * columns from the place of the first; the first takes `first`'s id (and its layers' ids).
+ */
+function nameTagsFor(
+  stack: { source: WorkplaneShape; layers: readonly TextLayer[]; keyring: NameTagKeyring | null },
+  names: readonly string[],
+  gap: number,
+  first: { id: string; ids: string[] },
+): WorkplaneShape[] {
+  const tags = names.map((name, index) => layeredTextShape(
+    nameTagSource(stack.source, { text: name }),
+    stack.layers,
+    index === 0 ? first.ids : [],
+    index === 0 ? first.id : createLocalId("text-tag"),
+    { locked: false, hidden: false, name },
+    stack.source.text,
+    stack.keyring,
+  ));
+  // Every tag is as wide as its name; the rows take the widest and deepest.
+  const width = Math.max(...tags.map(shapeWidth));
+  const depth = Math.max(...tags.map(shapeDepth));
+  const columns = Math.max(1, Math.round(Math.sqrt((tags.length * (depth + gap)) / (width + gap))));
+  const offsets = nameTagOffsets(tags.length, width, depth, gap, columns);
+  return tags.map((tag, index) => (index === 0 ? tag : canonicalizeShape({ ...tag, x: tag.x + offsets[index].x, z: tag.z + offsets[index].z })));
+}
+
+/** The name tag the shape library places (#215): a text "Name", split into the default layers. */
+const NAME_TAG_LETTER_SIZE = 12;
+function nameTagFromText(text: WorkplaneShape): WorkplaneShape {
+  const words = { ...text, text: t("nameTag.defaultText") };
+  const source = { ...words, ...textLetterSizePatch(words, NAME_TAG_LETTER_SIZE) };
+  return layeredTextShape(source, DEFAULT_TEXT_LAYERS, [], text.id, { locked: false, hidden: false, name: "Text" });
+}
+
+/** A shape fresh from the library as it is placed: the name tag (#215) comes as its layers. */
+function prepareNewShape(asset: ShapeAsset, shape: WorkplaneShape): WorkplaneShape {
+  return asset.id === nameTagAsset.id && shape.kind === "text" ? nameTagFromText(shape) : shape;
 }
 
 function offersCylinderWrap(shape: WorkplaneShape | null | undefined) {
@@ -5946,6 +5993,8 @@ function mcpShapeSummary(shape: WorkplaneShape): LayerlingMcpShapeSummary {
       : {}),
     // A text's fill (#215) reads like a sketch body's: its stroke, and whether the counters are left out.
     ...(shape.kind === "text" ? { textStroke: shape.textStroke ?? null, textSilhouette: Boolean(shape.textSilhouette) } : {}),
+    // A name tag's key ring hole (#215), on the layers it goes through; the bottom one carries the ear.
+    ...(shape.kind === "text" && shape.textKeyring ? { textKeyring: shape.textKeyring } : {}),
     ...(shape.layeredText ? { layeredText: true } : {}),
     children: shape.groupedShapes?.map(mcpShapeSummary),
   };
@@ -8624,10 +8673,10 @@ export function LayerlingEditor({
       const shape = makeShapeFromAsset(asset, undefined, workspaceSettingsRef.current.shapeCustomizations[asset.kind]);
       // Dropped on a body's face, the shape lies on that face; otherwise on the current workplane.
       const workplane = onFace ?? placementWorkplane;
-      const nextShape = {
+      const nextShape = prepareNewShape(asset, {
         ...shape,
         ...placementPatchForNewShape(shape, workplane, point ?? workplane.origin),
-      };
+      });
       commitShapes([...shapes, nextShape], nextShape.id, t("status.shapeAdded", { name: shapeAssetLabel(asset) }));
     },
     [commitShapes, placementWorkplane, shapes],
@@ -10858,15 +10907,23 @@ export function LayerlingEditor({
     );
   }, [commitShapes, cylinderWrapErrorText, selectedShape, selectedShapes.length, shapes]);
 
+  /** The selected name tag as its card shows it: words, layers and key ring hole read from its layers (#215). */
+  const selectedNameTag = useMemo(
+    () => (selectedShapes.length === 1 && selectedShape && selectedShape.kind !== "text" && offersTextLayers(selectedShape) ? textLayerStack(selectedShape) : null),
+    [selectedShape, selectedShapes.length],
+  );
+
   /** Splits the selected text into layers, or builds the selected stack again with new words, font or layers (#215). */
   const layerSelectedText = useCallback((patch: TextLayerPatch) => {
     if (selectedShapes.length !== 1 || !selectedShape || !offersTextLayers(selectedShape)) return;
     const stack = textLayerStack(selectedShape);
     if (!stack) return;
     const wasText = selectedShape.kind === "text";
-    const source = { ...stack.source, ...(patch.text !== undefined ? { text: patch.text } : {}), ...(patch.font !== undefined ? { font: patch.font } : {}) };
+    // New words or another font keep the letter size, so the tag grows with its name (#215).
+    const source = nameTagSource(stack.source, patch);
     const layers = patch.layers ?? (wasText ? [...DEFAULT_TEXT_LAYERS] : stack.layers);
-    const next = layeredTextShape(source, layers, wasText ? [] : stack.ids, selectedShape.id, selectedShape, stack.source.text);
+    const keyring = patch.keyring !== undefined ? patch.keyring : stack.keyring;
+    const next = layeredTextShape(source, layers, wasText ? [] : stack.ids, selectedShape.id, selectedShape, stack.source.text, keyring);
     commitShapes(
       shapesRef.current.map((shape) => (shape.id === selectedShape.id ? next : shape)),
       [next.id],
@@ -10879,15 +10936,7 @@ export function LayerlingEditor({
     if (selectedShapes.length !== 1 || !selectedShape || !offersTextLayers(selectedShape) || names.length === 0) return;
     const stack = textLayerStack(selectedShape);
     if (!stack) return;
-    const width = shapeWidth(selectedShape);
-    const depth = shapeDepth(selectedShape);
-    const columns = Math.max(1, Math.round(Math.sqrt((names.length * (depth + gap)) / (width + gap))));
-    const offsets = nameTagOffsets(names.length, width, depth, gap, columns);
-    const tags = names.map((name, index) => {
-      const id = index === 0 ? selectedShape.id : createLocalId("text-tag");
-      const source = { ...stack.source, text: name, x: stack.source.x + offsets[index].x, z: stack.source.z + offsets[index].z };
-      return layeredTextShape(source, stack.layers, index === 0 && selectedShape.kind !== "text" ? stack.ids : [], id, { locked: false, hidden: false, name: name }, stack.source.text);
-    });
+    const tags = nameTagsFor(stack, names, gap, { id: selectedShape.id, ids: selectedShape.kind !== "text" ? stack.ids : [] });
     commitShapes(
       [...shapesRef.current.filter((shape) => shape.id !== selectedShape.id), ...tags],
       tags.map((tag) => tag.id),
@@ -11859,32 +11908,29 @@ export function LayerlingEditor({
         const wasText = target.kind === "text";
         // A font by name as update_object takes it: a font of one's own becomes its id, a built-in name stays.
         const font = typeof params.font === "string" ? mcpTextFont(params.font) ?? params.font : undefined;
-        const source = { ...stack.source, ...(typeof params.text === "string" ? { text: params.text.slice(0, 24) || " " } : {}), ...(font ? { font } : {}) };
+        if (params.letterSize !== undefined && !(typeof params.letterSize === "number" && Number.isFinite(params.letterSize) && params.letterSize > 0)) throw new Error("letterSize must be a number of mm above 0");
+        // Words, font and letter size as the panel takes them: the letters keep their size unless letterSize sets one (#215).
+        const source = nameTagSource(stack.source, {
+          ...(typeof params.text === "string" ? { text: params.text.slice(0, 24) || " " } : {}),
+          ...(font ? { font } : {}),
+          ...(typeof params.letterSize === "number" ? { letterSize: params.letterSize } : {}),
+        });
         const requested = params.layers !== undefined ? normalizeTextLayers(params.layers) : null;
         if (params.layers !== undefined && !requested) throw new Error("layers must be 1 to 6 entries with grow, height, color and silhouette");
         const layers = requested ?? (wasText ? [...DEFAULT_TEXT_LAYERS] : stack.layers);
+        // keyring: { side, diameter } (or true for a 4 mm hole on the left) puts the key ring hole on, false or null takes it off, left out it stays.
+        if (params.keyring !== undefined && params.keyring !== null && typeof params.keyring !== "boolean" && (typeof params.keyring !== "object" || Array.isArray(params.keyring))) throw new Error("keyring must be { side, diameter }, true, or false to take it off");
+        const keyring = params.keyring === undefined ? stack.keyring : normalizeNameTagKeyring(params.keyring === true ? {} : params.keyring);
         const names = Array.isArray(params.names) ? mcpStringArray(params.names).map((name) => name.trim()).filter(Boolean).slice(0, 100) : [];
         if (names.length) {
           const gap = typeof params.gap === "number" && Number.isFinite(params.gap) ? Math.max(0, params.gap) : 5;
-          const probe = layeredTextShape({ ...source, text: names[0] }, layers, [], target.id, target, stack.source.text);
-          const width = shapeWidth(probe);
-          const depth = shapeDepth(probe);
-          const columns = Math.max(1, Math.round(Math.sqrt((names.length * (depth + gap)) / (width + gap))));
-          const offsets = nameTagOffsets(names.length, width, depth, gap, columns);
-          const tags = names.map((name, index) => layeredTextShape(
-            { ...source, text: name, x: source.x + offsets[index].x, z: source.z + offsets[index].z },
-            layers,
-            [],
-            index === 0 ? target.id : createLocalId("text-tag"),
-            { locked: false, hidden: false, name },
-            stack.source.text,
-          ));
+          const tags = nameTagsFor({ source, layers, keyring }, names, gap, { id: target.id, ids: [] });
           commitShapes([...currentShapes().filter((shape) => shape.id !== target.id), ...tags], tags.map((tag) => tag.id), t("status.mcpTextTagsMade", { count: tags.length }));
           return { objects: tags.map(mcpShapeSummary) };
         }
-        const next = layeredTextShape(source, layers, wasText ? [] : stack.ids, target.id, target, stack.source.text);
+        const next = layeredTextShape(source, layers, wasText ? [] : stack.ids, target.id, target, stack.source.text, keyring);
         commitShapes(currentShapes().map((shape) => (shape.id === target.id ? next : shape)), next.id, t("status.mcpTextLayered", { count: layers.length }));
-        return { object: mcpShapeSummary(next), layers };
+        return { object: mcpShapeSummary(next), layers, letterSize: Math.round(textLetterSize(source) * 100) / 100, keyring };
       }
 
       if (command.action === "intersect_objects") {
@@ -14221,6 +14267,8 @@ export function LayerlingEditor({
           onWrapAroundCylinder={selectedShapes.length === 1 && offersCylinderWrap(selectedShape) ? wrapSelectionAroundCylinder : undefined}
           onLayerText={selectedShapes.length === 1 && offersTextLayers(selectedShape) ? layerSelectedText : undefined}
           onTextTags={selectedShapes.length === 1 && offersTextLayers(selectedShape) ? makeTextTags : undefined}
+          textLayerStack={selectedNameTag}
+          prepareNewShape={prepareNewShape}
           onUpdateShape={updateShape}
           onDuplicateShapeAt={duplicateShapeAt}
           onDuplicateShapesMoved={duplicateShapesMoved}
@@ -15223,7 +15271,7 @@ function SecondaryToolbar({
     return [
       ...leftTools.slice(0, 4).map((tool) => fromTool(tool, t("editor.group.clipboard"))),
       ...leftTools.slice(4).map((tool) => fromTool(tool, t("editor.group.history"))),
-      ...toolbarShapeAssets.map((shape) => plain(
+      ...libraryShapeAssets.map((shape) => plain(
         `shape-${shape.id}`,
         t("palette.addShape", { shape: shapeAssetMenuLabel(shape) }),
         shapesGroup,
@@ -15319,7 +15367,7 @@ function SecondaryToolbar({
                 </>
               ) : null}
               <div className="shape-menu-list">
-                {toolbarShapeAssets.map((shape) => (
+                {libraryShapeAssets.map((shape) => (
                   <button
                     className="shape-menu-item"
                     key={shape.id}
