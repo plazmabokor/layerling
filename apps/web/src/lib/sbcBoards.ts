@@ -18,6 +18,13 @@
  * - BIGTREETECH Pi V1.2: the maker's own 3D model (BIGTREETECH_Pi_V1.2.step, github.com/bigtreetech/BTT-Pi).
  * A value the maker does not give is marked `estimated`.
  *
+ * The microSD card slot: on the Raspberry Pi 5 and the BIGTREETECH Pi read from the same 3D models;
+ * on the Pi 4 and the 3 B+ its place and the card standing out of the board from the drawings' DXF
+ * (layer PARTS_BOTTOM: the socket 1.69 to 13.13 x 22.11 to 34.10 mm, the card from x = -2.27), its
+ * height estimated; on the Zero 2 W, where it is on top, read off the drawing (RP-008358), its height
+ * estimated. It reaches to the board's edge (or the card past it), the way the card goes in, so it is
+ * a connector at the left edge and gets the clearance and the reach.
+ *
  * Adding a board: its type in `SbcBoardType` (types/layerling.ts), its entry in SBC_BOARDS and
  * SBC_BOARD_ORDER, and the `board` enum of layerling_create_sbc_board (a unit test holds the two
  * lists together). The clearance and the reach need nothing: which parts are connectors at an
@@ -54,6 +61,12 @@ export type SbcPart = {
   pins?: [number, number];
   /** The height (or, for the Zero, the width too) is not given by the maker. */
   estimated?: boolean;
+  /** Under the board (the microSD card slot): its height is measured down from the board's underside. */
+  underside?: boolean;
+  /** A ribbon cable's connector (camera, display, PCIe): it can open up through a lid or out through a wall. */
+  ribbon?: boolean;
+  /** The GPIO header: it can reach up through a lid. */
+  gpio?: boolean;
 };
 
 export type SbcBoard = {
@@ -89,14 +102,16 @@ export const SBC_BOARDS: Record<SbcBoardType, SbcBoard> = {
       { name: "USB-C power", x0: 6.7, x1: 15.7, y0: -1.2, y1: 6.6, height: 3.3, kind: "connector", profile: "usbC" },
       { name: "micro-HDMI 0", x0: 22.1, x1: 29.6, y0: -1.4, y1: 6.5, height: 3.5, kind: "connector", profile: "microHdmi" },
       { name: "micro-HDMI 1", x0: 35.5, x1: 43.0, y0: -1.4, y1: 6.5, height: 3.5, kind: "connector", profile: "microHdmi" },
-      { name: "camera/display 0", x0: 47.1, x1: 50.7, y0: 0.2, y1: 16.9, height: 4.0, kind: "header" },
-      { name: "camera/display 1", x0: 53.3, x1: 56.9, y0: 0.2, y1: 16.9, height: 4.0, kind: "header" },
+      { name: "camera/display 0", x0: 47.1, x1: 50.7, y0: 0.2, y1: 16.9, height: 4.0, kind: "header", ribbon: true },
+      { name: "camera/display 1", x0: 53.3, x1: 56.9, y0: 0.2, y1: 16.9, height: 4.0, kind: "header", ribbon: true },
       { name: "Ethernet", x0: 66.5, x1: 88.1, y0: 1.5, y1: 19.0, height: 13.3, kind: "connector", profile: "rj45" },
       { name: "USB-A (middle)", x0: 70.5, x1: 88.0, y0: 21.8, y1: 36.3, height: 16.2, kind: "connector", profile: "usbA2" },
       { name: "USB-A (back)", x0: 70.3, x1: 87.8, y0: 39.8, y1: 54.3, height: 16.1, kind: "connector", profile: "usbA2" },
-      { name: "GPIO header", x0: 7.1, x1: 57.9, y0: 50.0, y1: 55.0, height: 8.6, kind: "header", pins: [20, 2] },
+      { name: "GPIO header", x0: 7.1, x1: 57.9, y0: 50.0, y1: 55.0, height: 8.6, kind: "header", pins: [20, 2], gpio: true },
       { name: "PoE header", x0: 59.0, x1: 64.0, y0: 7.0, y1: 12.0, height: 8.6, kind: "header", pins: [2, 2] },
-      { name: "PCIe connector", x0: 1.1, x1: 4.7, y0: 23.2, y1: 36.8, height: 4.0, kind: "header" },
+      { name: "PCIe connector", x0: 1.1, x1: 4.7, y0: 23.2, y1: 36.8, height: 4.0, kind: "header", ribbon: true },
+      // The socket from x = 2.25 in the model, 1.42 mm deep under the board; drawn to the edge, where the card goes in.
+      { name: "microSD card slot", x0: 0, x1: 13.65, y0: 22.11, y1: 34.06, height: 1.42, kind: "connector", underside: true },
       { name: "power button", x0: -0.5, x1: 3.1, y0: 16.2, y1: 20.7, height: 3.3, kind: "button" },
       { name: "SoC", x0: 24.7, x1: 41.7, y0: 14.3, y1: 31.3, height: 2.4, kind: "chip" },
       { name: "chip", x0: 52.5, x1: 64.5, y0: 29.1, y1: 41.1, height: 1.2, kind: "chip" },
@@ -122,13 +137,14 @@ export const SBC_BOARDS: Record<SbcBoardType, SbcBoard> = {
       { name: "USB-C power", x0: 6.88, x1: 15.53, y0: -1.25, y1: 6.15, height: 3.2, kind: "connector", profile: "usbC" },
       { name: "micro-HDMI 0", x0: 22.4, x1: 29.6, y0: -1.43, y1: 6.52, height: 3.0, kind: "connector", profile: "microHdmi" },
       { name: "micro-HDMI 1", x0: 35.9, x1: 43.1, y0: -1.43, y1: 6.52, height: 3.0, kind: "connector", profile: "microHdmi" },
-      { name: "camera", x0: 45.05, x1: 49.0, y0: 0.3, y1: 22.7, height: 5.5, kind: "header" },
+      { name: "camera", x0: 45.05, x1: 49.0, y0: 0.3, y1: 22.7, height: 5.5, kind: "header", ribbon: true },
       { name: "audio/video jack", x0: 50.5, x1: 57.5, y0: -2.5, y1: 12.5, height: 6.0, kind: "connector", profile: "audio" },
       { name: "USB 2.0", x0: 70.3, x1: 88.0, y0: 1.65, y1: 15.57, height: 16.0, kind: "connector", profile: "usbA2" },
       { name: "USB 3.0", x0: 70.5, x1: 88.0, y0: 20.43, y1: 34.25, height: 16.0, kind: "connector", profile: "usbA2" },
       { name: "Ethernet", x0: 66.65, x1: 88.0, y0: 37.99, y1: 53.51, height: 13.5, kind: "connector", profile: "rj45" },
-      { name: "display", x0: 1.5, x1: 5.45, y0: 16.8, y1: 39.2, height: 5.5, kind: "header" },
-      { name: "GPIO header", x0: 7.1, x1: 57.9, y0: 50.0, y1: 55.0, height: 8.5, kind: "header", pins: [20, 2] },
+      { name: "display", x0: 1.5, x1: 5.45, y0: 16.8, y1: 39.2, height: 5.5, kind: "header", ribbon: true },
+      { name: "GPIO header", x0: 7.1, x1: 57.9, y0: 50.0, y1: 55.0, height: 8.5, kind: "header", pins: [20, 2], gpio: true },
+      { name: "microSD card slot", x0: -2.27, x1: 13.13, y0: 22.11, y1: 34.1, height: 1.4, kind: "connector", underside: true, estimated: true },
       { name: "PoE header", x0: 59.0, x1: 64.0, y0: 43.86, y1: 48.86, height: 8.5, kind: "header", estimated: true, pins: [2, 2] },
       { name: "SoC", x0: 21.75, x1: 36.75, y0: 25.0, y1: 40.0, height: 2.4, kind: "chip" },
       { name: "RAM", x0: 39.05, x1: 50.55, y0: 25.0, y1: 40.0, height: 1.0, kind: "chip", estimated: true },
@@ -150,13 +166,14 @@ export const SBC_BOARDS: Record<SbcBoardType, SbcBoard> = {
     parts: [
       { name: "micro-USB power", x0: 6.85, x1: 14.35, y0: -0.6, y1: 4.71, height: 3.0, kind: "connector", estimated: true, profile: "microUsb" },
       { name: "HDMI", x0: 24.75, x1: 39.25, y0: -1.5, y1: 10.65, height: 6.5, kind: "connector", profile: "hdmi" },
-      { name: "camera", x0: 43.55, x1: 47.5, y0: 0.3, y1: 22.7, height: 5.5, kind: "header" },
+      { name: "camera", x0: 43.55, x1: 47.5, y0: 0.3, y1: 22.7, height: 5.5, kind: "header", ribbon: true },
       { name: "audio/video jack", x0: 50.0, x1: 57.0, y0: -2.5, y1: 12.5, height: 6.0, kind: "connector", profile: "audio" },
       { name: "Ethernet", x0: 65.65, x1: 87.0, y0: 2.5, y1: 18.0, height: 13.5, kind: "connector", profile: "rj45" },
       { name: "USB 2.0 (middle)", x0: 69.3, x1: 87.0, y0: 21.65, y1: 35.57, height: 16.0, kind: "connector", profile: "usbA2" },
       { name: "USB 2.0 (back)", x0: 69.3, x1: 87.0, y0: 39.65, y1: 53.57, height: 16.0, kind: "connector", profile: "usbA2" },
-      { name: "display", x0: 1.5, x1: 5.45, y0: 16.8, y1: 39.2, height: 5.5, kind: "header" },
-      { name: "GPIO header", x0: 7.1, x1: 57.9, y0: 50.0, y1: 55.0, height: 8.5, kind: "header", pins: [20, 2] },
+      { name: "display", x0: 1.5, x1: 5.45, y0: 16.8, y1: 39.2, height: 5.5, kind: "header", ribbon: true },
+      { name: "GPIO header", x0: 7.1, x1: 57.9, y0: 50.0, y1: 55.0, height: 8.5, kind: "header", pins: [20, 2], gpio: true },
+      { name: "microSD card slot", x0: -2.27, x1: 13.13, y0: 22.11, y1: 34.1, height: 1.4, kind: "connector", underside: true, estimated: true },
       { name: "PoE header", x0: 59.0, x1: 63.99, y0: 44.1, y1: 48.66, height: 8.5, kind: "header", estimated: true, pins: [2, 2] },
       { name: "SoC", x0: 19.98, x1: 33.98, y0: 24.52, y1: 38.52, height: 2.0, kind: "chip", estimated: true },
       { name: "USB/Ethernet controller", x0: 57.05, x1: 66.05, y0: 23.38, y1: 32.38, height: 1.0, kind: "chip", estimated: true },
@@ -179,7 +196,9 @@ export const SBC_BOARDS: Record<SbcBoardType, SbcBoard> = {
       { name: "mini-HDMI", x0: 6.9, x1: 17.9, y0: -0.5, y1: 7.0, height: 3.5, kind: "connector", estimated: true, profile: "miniHdmi" },
       { name: "micro-USB (data)", x0: 37.65, x1: 45.15, y0: -1.0, y1: 4.5, height: 3.0, kind: "connector", estimated: true, profile: "microUsb" },
       { name: "micro-USB (power)", x0: 50.25, x1: 57.75, y0: -1.0, y1: 4.5, height: 3.0, kind: "connector", estimated: true, profile: "microUsb" },
-      { name: "camera", x0: 62.0, x1: 65.0, y0: 7.0, y1: 23.0, height: 1.5, kind: "connector", estimated: true },
+      { name: "camera", x0: 62.0, x1: 65.0, y0: 7.0, y1: 23.0, height: 1.5, kind: "connector", estimated: true, ribbon: true },
+      // On top here: the socket read off the drawing from x = 1.6, drawn to the edge, where the card goes in.
+      { name: "microSD card slot", x0: 0, x1: 12.9, y0: 11.2, y1: 23.0, height: 1.4, kind: "connector", estimated: true },
       { name: "system in package", x0: 19.8, x1: 34.9, y0: 6.4, y1: 21.7, height: 1.3, kind: "shield", estimated: true },
       { name: "chip", x0: 37.8, x1: 49.8, y0: 7.2, y1: 19.3, height: 1.0, kind: "chip", estimated: true },
     ],
@@ -203,7 +222,9 @@ export const SBC_BOARDS: Record<SbcBoardType, SbcBoard> = {
       { name: "Ethernet", x0: 67.04, x1: 88.44, y0: 2.4, y1: 18.28, height: 13.5, kind: "connector", profile: "rj45" },
       { name: "USB 2.0 (middle)", x0: 70.79, x1: 88.38, y0: 21.44, y1: 37.14, height: 16.3, kind: "connector", profile: "usbA2" },
       { name: "USB 2.0 (back)", x0: 70.77, x1: 88.37, y0: 39.42, y1: 55.12, height: 16.3, kind: "connector", profile: "usbA2" },
-      { name: "GPIO header", x0: 13.47, x1: 64.27, y0: 50.39, y1: 55.47, height: 9.25, kind: "header", pins: [20, 2] },
+      { name: "GPIO header", x0: 13.47, x1: 64.27, y0: 50.39, y1: 55.47, height: 9.25, kind: "header", pins: [20, 2], gpio: true },
+      // The socket from x = 0.54 in the model, 1.44 mm deep under the board; drawn to the edge, where the card goes in.
+      { name: "microSD card slot", x0: 0, x1: 14.04, y0: 27.31, y1: 38.69, height: 1.44, kind: "connector", underside: true },
       { name: "power terminal", x0: -2.95, x1: 7.35, y0: 38.91, y1: 49.51, height: 14.15, kind: "connector" },
       { name: "fan connector", x0: 43.07, x1: 53.07, y0: 38.3, y1: 47.3, height: 8.0, kind: "header" },
       { name: "SPI display connector", x0: 0.97, x1: 5.88, y0: 8.37, y1: 23.77, height: 6.27, kind: "header" },
@@ -233,12 +254,39 @@ export function normalizeSbcReach(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) ? Math.min(MAX_SBC_REACH, Math.max(0, value)) : 0;
 }
 
-/** The stored settings made safe, or null when they name no known board. */
+/** How far the openings going up (ribbon cables, the GPIO header) reach above their part: 20 to 100 mm, so they pass a lid. */
+export const MIN_SBC_UP_REACH = 20;
+export const MAX_SBC_UP_REACH = 100;
+
+export function normalizeSbcUpReach(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) ? Math.min(MAX_SBC_UP_REACH, Math.max(MIN_SBC_UP_REACH, value)) : MIN_SBC_UP_REACH;
+}
+
+/** The openings asked for besides the connectors at the edge: ribbon cables up or out, the GPIO header up, and how far up. */
+export type SbcPassages = { ribbonUp?: boolean; ribbonSide?: boolean; gpioUp?: boolean; upReach?: number };
+
+/** The stored settings made safe, or null when they name no known board. Openings not asked for are left out. */
 export function normalizeSbcBoardSettings(input: unknown): SbcBoardSettings | null {
   if (!input || typeof input !== "object") return null;
   const raw = input as Partial<SbcBoardSettings>;
   if (!SBC_BOARD_ORDER.includes(raw.board as SbcBoardType)) return null;
-  return { board: raw.board as SbcBoardType, clearance: normalizeSbcClearance(raw.clearance), reach: normalizeSbcReach(raw.reach) };
+  return {
+    board: raw.board as SbcBoardType,
+    clearance: normalizeSbcClearance(raw.clearance),
+    reach: normalizeSbcReach(raw.reach),
+    ...(raw.ribbonUp === true ? { ribbonUp: true } : {}),
+    ...(raw.ribbonSide === true ? { ribbonSide: true } : {}),
+    ...(raw.gpioUp === true ? { gpioUp: true } : {}),
+    ...(raw.upReach !== undefined ? { upReach: normalizeSbcUpReach(raw.upReach) } : {}),
+  };
+}
+
+/** The board has a ribbon cable connector, or a GPIO header: whether the card offers their openings. */
+export function sbcBoardHasRibbon(board: SbcBoard) {
+  return board.parts.some((part) => part.ribbon);
+}
+export function sbcBoardHasGpio(board: SbcBoard) {
+  return board.parts.some((part) => part.gpio);
 }
 
 /** How close to the board's edge a part must come to count as standing at it, in mm. */
@@ -265,41 +313,51 @@ export function sbcPartAtEdge(board: SbcBoard, part: SbcPart) {
 }
 
 export type SbcBlock = SbcPart & {
-  /** The block grown by the clearance, bottom on the board's top. */
+  /** The block grown by the clearance, bottom on the board's top (top on its underside for a part under it). */
   bottom: number;
   top: number;
 };
 
+/** The part opens up through a lid with these openings: a ribbon cable's connector or the GPIO header asked for. */
+function opensUp(part: SbcPart, passages: SbcPassages) {
+  return (part.ribbon && passages.ribbonUp === true) || (part.gpio && passages.gpioUp === true);
+}
+
 /**
  * The blocks as built. A connector at the edge is grown by the clearance on every side but its
- * bottom, which stays on the board, and then reaches further out by the reach on each edge it
- * stands at, so it cuts through a case wall; the rest stay as they are. Works the same for every
- * board. Heights are from the bottom of the board.
+ * bottom, which stays on the board (its top, for one under the board), and then reaches further
+ * out by the reach on each edge it stands at, so it cuts through a case wall. A ribbon cable's
+ * connector or the GPIO header asked to open up is grown the same and reaches `upReach` higher,
+ * through a lid. The rest stay as they are. Works the same for every board. Heights are from the
+ * bottom of the board; a part under it lies below 0.
  */
-export function sbcBoardBlocks(board: SbcBoard, clearance = 0, reach = 0): SbcBlock[] {
+export function sbcBoardBlocks(board: SbcBoard, clearance = 0, reach = 0, passages: SbcPassages = {}): SbcBlock[] {
   const extra = normalizeSbcClearance(clearance);
   const further = normalizeSbcReach(reach);
+  const up = normalizeSbcUpReach(passages.upReach);
   return board.parts.map((part) => {
     const edges = sbcPartEdges(board, part);
     const atEdge = part.kind === "connector" && (edges.left || edges.right || edges.front || edges.back);
-    const grow = atEdge ? extra : 0;
+    const rising = opensUp(part, passages);
+    const grow = atEdge || rising ? extra : 0;
     const out = atEdge ? further : 0;
-    return {
+    const box = {
       ...part,
       x0: part.x0 - grow - (edges.left ? out : 0),
       x1: part.x1 + grow + (edges.right ? out : 0),
       y0: part.y0 - grow - (edges.front ? out : 0),
       y1: part.y1 + grow + (edges.back ? out : 0),
-      height: part.height + grow,
-      bottom: board.thickness,
-      top: board.thickness + part.height + grow,
+      height: part.height + grow + (rising ? up : 0),
     };
+    return part.underside
+      ? { ...box, bottom: -(part.height + grow), top: 0 }
+      : { ...box, bottom: board.thickness, top: board.thickness + box.height };
   });
 }
 
 /** The board and everything on it, as a box in the board's frame: what the body's size will be. */
-export function sbcBoardExtent(board: SbcBoard, clearance = 0, reach = 0) {
-  return sbcSolidsExtent(board, sbcBoardSolids(board, clearance, reach));
+export function sbcBoardExtent(board: SbcBoard, clearance = 0, reach = 0, passages: SbcPassages = {}) {
+  return sbcSolidsExtent(board, sbcBoardSolids(board, clearance, reach, passages));
 }
 
 /*
@@ -366,12 +424,14 @@ function facing(board: SbcBoard, part: SbcPart) {
  * its openings drawn on the front; an audio jack is its round collar in front of its housing; a pin
  * header gets a dot for every pin.
  */
-export function sbcBoardSolids(board: SbcBoard, clearance = 0, reach = 0): SbcSolid[] {
+export function sbcBoardSolids(board: SbcBoard, clearance = 0, reach = 0, passages: SbcPassages = {}): SbcSolid[] {
   const extra = normalizeSbcClearance(clearance);
-  const blocks = sbcBoardBlocks(board, extra, reach);
+  const blocks = sbcBoardBlocks(board, extra, reach, passages);
   return board.parts.flatMap((part, index): SbcSolid[] => {
     const block = blocks[index];
     const plain: SbcSolid = { name: part.name, role: part.kind, x0: block.x0, x1: block.x1, y0: block.y0, y1: block.y1, bottom: block.bottom, top: block.top };
+    // A ribbon cable's way out through a wall, asked for, beside its connector.
+    const sideway = part.ribbon && passages.ribbonSide === true && part.kind !== "connector" ? [ribbonSideway(board, part, extra, reach)] : [];
     const side = part.kind === "connector" ? facing(board, part) : null;
     const along = side === "front" || side === "back" ? "y" as const : "x" as const;
     // Across the face: x for a part on the front or back edge, y on a side edge.
@@ -395,12 +455,14 @@ export function sbcBoardSolids(board: SbcBoard, clearance = 0, reach = 0): SbcSo
           const v = (row - (rows - 1) / 2) * PIN_PITCH;
           const x = midX + (alongX ? u : v);
           const y = midY + (alongX ? v : u);
-          dots.push({ name: `${part.name} pin`, role: "pin", x0: x - PIN_SIZE / 2, x1: x + PIN_SIZE / 2, y0: y - PIN_SIZE / 2, y1: y + PIN_SIZE / 2, bottom: block.top, top: block.top + MARK_DEPTH });
+          // On the header's own top, also when it reaches up through a lid.
+          const pinTop = board.thickness + part.height;
+          dots.push({ name: `${part.name} pin`, role: "pin", x0: x - PIN_SIZE / 2, x1: x + PIN_SIZE / 2, y0: y - PIN_SIZE / 2, y1: y + PIN_SIZE / 2, bottom: pinTop, top: pinTop + MARK_DEPTH });
         }
       }
-      return [plain, ...dots];
+      return [plain, ...dots, ...sideway];
     }
-    if (!side || !part.profile) return [plain];
+    if (!side || !part.profile) return [plain, ...sideway];
     const grow = sbcPartAtEdge(board, part) ? extra : 0;
     const [partLo, partHi] = across(part);
     const middle = (partLo + partHi) / 2;
@@ -460,5 +522,31 @@ export function sbcSolidsExtent(board: SbcBoard, solids: readonly SbcSolid[]) {
     minY: Math.min(0, ...solids.map((solid) => solid.y0)),
     maxY: Math.max(board.depth, ...solids.map((solid) => solid.y1)),
     height: Math.max(board.thickness, ...solids.map((solid) => solid.top)),
+    /** The lowest point: 0, the board's underside, or below it for a part under the board. */
+    bottom: Math.min(0, ...solids.map((solid) => solid.bottom)),
   };
+}
+
+/**
+ * A ribbon cable's way out through a wall: the cable leaves its connector across the connector's
+ * long side, so the opening runs that way to the nearer edge of the board and on by the reach, as
+ * wide as the connector is long and as high as it stands, both grown by the clearance.
+ */
+export function ribbonSideway(board: SbcBoard, part: SbcPart, clearance = 0, reach = 0): SbcSolid {
+  const grow = normalizeSbcClearance(clearance);
+  const out = normalizeSbcReach(reach);
+  const alongX = part.x1 - part.x0 >= part.y1 - part.y0;
+  const bottom = board.thickness;
+  const top = board.thickness + part.height + grow;
+  if (alongX) {
+    // Long side along x: the cable leaves along y, to the front (y = 0) or the back edge.
+    const toFront = (part.y0 + part.y1) / 2 <= board.depth / 2;
+    const y0 = toFront ? -grow - out : (part.y0 + part.y1) / 2;
+    const y1 = toFront ? (part.y0 + part.y1) / 2 : board.depth + grow + out;
+    return { name: `${part.name} cable way`, role: "connector", x0: part.x0 - grow, x1: part.x1 + grow, y0, y1, bottom, top };
+  }
+  const toLeft = (part.x0 + part.x1) / 2 <= board.width / 2;
+  const x0 = toLeft ? -grow - out : (part.x0 + part.x1) / 2;
+  const x1 = toLeft ? (part.x0 + part.x1) / 2 : board.width + grow + out;
+  return { name: `${part.name} cable way`, role: "connector", x0, x1, y0: part.y0 - grow, y1: part.y1 + grow, bottom, top };
 }

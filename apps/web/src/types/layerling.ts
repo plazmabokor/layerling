@@ -1427,6 +1427,14 @@ export type SbcBoardSettings = {
   clearance: number;
   /** How much further out in mm the connectors at the edge reach, to cut through a case wall, 0 to 10; none on older boards. */
   reach?: number;
+  /** The ribbon cable connectors (camera, display, PCIe) open up through a lid, by `upReach`. */
+  ribbonUp?: boolean;
+  /** The ribbon cable connectors open out through the nearer wall, across their long side, by `reach`. */
+  ribbonSide?: boolean;
+  /** The GPIO header reaches up through a lid, by `upReach`. */
+  gpioUp?: boolean;
+  /** How far in mm the openings going up reach above their part, 20 to 100 (default 20). */
+  upReach?: number;
 };
 
 export type QrCodeSettings = {

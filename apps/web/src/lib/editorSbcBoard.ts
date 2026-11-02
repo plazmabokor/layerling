@@ -71,7 +71,7 @@ export function sbcBoardOf(shape: WorkplaneShape | null | undefined): SbcBoardSe
 export async function sbcBoardShape(input: SbcBoardSettings, triangleLimit: number): Promise<WorkplaneShape> {
   const settings = normalizeSbcBoardSettings(input) ?? { board: DEFAULT_SBC_BOARD, clearance: 0, reach: 0 };
   const board = SBC_BOARDS[settings.board];
-  const solids = sbcBoardSolids(board, settings.clearance, settings.reach);
+  const solids = sbcBoardSolids(board, settings.clearance, settings.reach, settings);
   const extent = sbcSolidsExtent(board, solids);
   // The board's frame laid on the workplane: x across, its front edge (y = 0) towards the viewer at +z,
   // the middle of everything on it at the origin.
@@ -100,7 +100,8 @@ export async function sbcBoardShape(input: SbcBoardSettings, triangleLimit: numb
 
   const group = groupedShape([pcb, ...parts]);
   if (!group) throw new Error(t("sbcBoard.failed"));
-  return canonicalizeShape({ ...group, id: createLocalId("sbc-board"), name: board.name, color: board.color, groupOperation: "group", sbcBoard: settings });
+  // Standing on its lowest point: the board's underside, or the card slot under it.
+  return canonicalizeShape({ ...group, id: createLocalId("sbc-board"), name: board.name, color: board.color, groupOperation: "group", sbcBoard: settings, elevation: 0 });
 }
 
 /**
