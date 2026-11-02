@@ -16,7 +16,23 @@
  * - Raspberry Pi Zero 2 W: the mechanical drawing (RP-008358), which gives the outline, the holes and the
  *   connectors' middles only; their widths are read off the drawing and their heights are estimated.
  * - BIGTREETECH Pi V1.2: the maker's own 3D model (BIGTREETECH_Pi_V1.2.step, github.com/bigtreetech/BTT-Pi).
- * A value the maker does not give is marked `estimated`.
+ * - Seeed Studio XIAO ESP32-C6: the outline (20.975 x 17.8 mm, the wiki's "21 x 17.8mm") and the 2 x 7
+ *   pins from Seeed's footprint XIAO-ESP32-C6-DIP.kicad_mod (github.com/Seeed-Studio/OPL_Kicad_Library,
+ *   F.Fab: -10.425 to 10.55 x -8.9 to 8.9, pins at x = -7.62 to 7.62, y = +-7.62, pin 1 at the USB end).
+ *   The parts' places are read off Seeed's own flat top view (pinout/XIAO_ESP32-C6_front_pinout.png in
+ *   github.com/Seeed-Studio/OSHW-XIAO-Series), scaled by its pins' 2.54 mm pitch (62.3 px/mm both ways),
+ *   so they are marked `estimated`, as are all heights, the thickness and the corners: Seeed's KiCad
+ *   project and 3D model were not to be had. The U.FL socket's height is Hirose's for the U.FL-R-SMT-1.
+ * - ESP32-C3 Super Mini: no maker's drawing exists (the boards are sold unbranded). From the most common
+ *   published model, Ulf Hille's "ESP32C3 SuperMini" STEP (GrabCAD, in github.com/mrtnvgr/KiCad_ESP32-C3-SuperMini):
+ *   18 x 22.52 x 0.9 mm, square corners, the pins 1.74 mm from the USB end, the buttons, the chip and the
+ *   antenna. That model draws the USB-C socket narrower than the USB Type-C specification allows (5.88 mm);
+ *   it is drawn 8.94 mm wide in its place. It has no LEDs, so none are drawn. All of it is `estimated`.
+ * - ESP32-C6 Super Mini: no maker's drawing either. From the published community model "ESP32-C6
+ *   SuperMini.step" (SolidWorks, github.com/mistic100/Nixie-Clock-IN2): 18 x 26 x 1.15 mm, square
+ *   corners, 2 x 10 pins, each part's box read from it. All of it is `estimated`; the model does not
+ *   say which button is BOOT and which RESET.
+ * A value the maker does not give is marked `estimated`. A board without mounting holes has `holes: []`.
  *
  * The microSD card slot: on the Raspberry Pi 5 and the BIGTREETECH Pi read from the same 3D models;
  * on the Pi 4 and the 3 B+ its place and the card standing out of the board from the drawings' DXF
@@ -59,7 +75,7 @@ export type SbcPart = {
   profile?: SbcConnectorProfile;
   /** A pin header's pins as [columns, rows] at 2.54 mm, shown as dots on its top. */
   pins?: [number, number];
-  /** The height (or, for the Zero, the width too) is not given by the maker. */
+  /** The height (or, for the Zero and the ESP32 boards, the place too) is not given by the maker. */
   estimated?: boolean;
   /** Under the board (the microSD card slot): its height is measured down from the board's underside. */
   underside?: boolean;
@@ -75,10 +91,13 @@ export type SbcBoard = {
   width: number;
   depth: number;
   thickness: number;
+  /** 0: square corners. */
   cornerRadius: number;
+  /** 0 for a board without mounting holes. */
   holeDiameter: number;
+  /** The mounting holes' middles; empty for a board without them (the ESP32 boards). */
   holes: Array<[number, number]>;
-  /** The board's colour: green for a Raspberry Pi, black for the BTT Pi. */
+  /** The board's colour: green for a Raspberry Pi, black for the BTT Pi and the ESP32 boards. */
   color: string;
   parts: SbcPart[];
   /** Values that are estimated, besides the parts marked so (hole diameter, thickness). */
@@ -236,9 +255,82 @@ export const SBC_BOARDS: Record<SbcBoardType, SbcBoard> = {
       { name: "capacitor", x0: 11.86, x1: 18.86, y0: 31.61, y1: 38.21, height: 5.2, kind: "chip" },
     ],
   },
+  xiaoEsp32c6: {
+    type: "xiaoEsp32c6",
+    name: "Seeed Studio XIAO ESP32-C6",
+    width: 20.975,
+    depth: 17.8,
+    thickness: 1.2,
+    cornerRadius: 1,
+    holeDiameter: 0,
+    holes: [],
+    color: "#1b1b1b",
+    estimated: ["thickness", "cornerRadius"],
+    // USB-C at the right end; the pins 2.805 mm from the other end, 2.54 mm apart, rows 1.28 mm in from the long edges.
+    parts: [
+      { name: "USB-C", x0: 15.25, x1: 22.67, y0: 4.46, y1: 13.39, height: 3.26, kind: "connector", profile: "usbC", estimated: true },
+      { name: "pins (VBUS to D7)", x0: 2.005, x1: 18.845, y0: 0.48, y1: 2.08, height: 0.05, kind: "header", pins: [7, 1], estimated: true },
+      { name: "pins (D0 to D6)", x0: 2.005, x1: 18.845, y0: 15.72, y1: 17.32, height: 0.05, kind: "header", pins: [7, 1], estimated: true },
+      { name: "BOOT button", x0: 19.15, x1: 20.45, y0: 1.15, y1: 3.85, height: 0.8, kind: "button", estimated: true },
+      { name: "RESET button", x0: 19.15, x1: 20.45, y0: 14.0, y1: 16.75, height: 0.8, kind: "button", estimated: true },
+      { name: "user LED", x0: 15.85, x1: 17.4, y0: 2.77, y1: 3.47, height: 0.4, kind: "chip", estimated: true },
+      { name: "charge LED", x0: 15.85, x1: 17.4, y0: 14.4, y1: 15.1, height: 0.4, kind: "chip", estimated: true },
+      { name: "shield can", x0: 3.94, x1: 14.04, y0: 2.88, y1: 15.12, height: 1.8, kind: "shield", estimated: true },
+      { name: "ceramic antenna", x0: 0.28, x1: 2.22, y0: 2.61, y1: 9.09, height: 1.0, kind: "chip", estimated: true },
+      // The external antenna's socket: the cable plugs in from above, so it is no connector at the edge.
+      { name: "U.FL antenna socket", x0: 0.12, x1: 2.7, y0: 11.98, y1: 14.55, height: 1.25, kind: "header", estimated: true },
+    ],
+  },
+  esp32c3SuperMini: {
+    type: "esp32c3SuperMini",
+    name: "ESP32-C3 Super Mini",
+    width: 22.52,
+    depth: 18,
+    thickness: 0.9,
+    cornerRadius: 0,
+    holeDiameter: 0,
+    holes: [],
+    color: "#1b1b1b",
+    estimated: ["thickness"],
+    // USB-C at the right end; the pins 1.74 mm from it, 2.54 mm apart, rows 1.38 mm in from the long edges.
+    parts: [
+      { name: "USB-C", x0: 16.67, x1: 24.02, y0: 4.53, y1: 13.47, height: 3.12, kind: "connector", profile: "usbC", estimated: true },
+      { name: "pins (5V to GPIO0)", x0: 1.94, x1: 21.58, y0: 0.58, y1: 2.18, height: 0.1, kind: "header", pins: [8, 1], estimated: true },
+      { name: "pins (GPIO5 to GPIO21)", x0: 1.94, x1: 21.58, y0: 15.82, y1: 17.42, height: 0.1, kind: "header", pins: [8, 1], estimated: true },
+      { name: "RESET button", x0: 12.58, x1: 14.78, y0: 4.15, y1: 7.95, height: 1.7, kind: "button", estimated: true },
+      { name: "BOOT button", x0: 12.58, x1: 14.78, y0: 10.05, y1: 13.85, height: 1.7, kind: "button", estimated: true },
+      { name: "ESP32-C3", x0: 4.2, x1: 11.27, y0: 4.46, y1: 11.54, height: 1.0, kind: "chip", estimated: true },
+      { name: "ceramic antenna", x0: 0.1, x1: 2.1, y0: 6.25, y1: 11.75, height: 1.0, kind: "chip", estimated: true },
+    ],
+  },
+  esp32c6SuperMini: {
+    type: "esp32c6SuperMini",
+    name: "ESP32-C6 Super Mini",
+    width: 26,
+    depth: 18,
+    thickness: 1.15,
+    cornerRadius: 0,
+    holeDiameter: 0,
+    holes: [],
+    color: "#1b1b1b",
+    estimated: ["thickness"],
+    // USB-C at the right end; the pins 1.57 mm from the ends, 2.54 mm apart, rows 1.39 mm in from the long edges.
+    parts: [
+      { name: "USB-C", x0: 20.57, x1: 27.97, y0: 4.53, y1: 13.47, height: 3.38, kind: "connector", profile: "usbC", estimated: true },
+      { name: "pins (5V to GPIO8)", x0: 0.77, x1: 25.23, y0: 0.59, y1: 2.19, height: 0.1, kind: "header", pins: [10, 1], estimated: true },
+      { name: "pins (TX to GPIO7)", x0: 0.77, x1: 25.23, y0: 15.83, y1: 17.43, height: 0.1, kind: "header", pins: [10, 1], estimated: true },
+      { name: "button (front)", x0: 15.37, x1: 18.37, y0: 2.63, y1: 6.63, height: 1.93, kind: "button", estimated: true },
+      { name: "button (back)", x0: 15.37, x1: 18.37, y0: 11.38, y1: 15.38, height: 1.93, kind: "button", estimated: true },
+      { name: "LED (front)", x0: 24.39, x1: 25.39, y0: 2.67, y1: 3.17, height: 0.35, kind: "chip", estimated: true },
+      { name: "LED (back)", x0: 24.39, x1: 25.39, y0: 14.92, y1: 15.42, height: 0.35, kind: "chip", estimated: true },
+      { name: "RGB LED (WS2812)", x0: 9.78, x1: 11.78, y0: 13.22, y1: 15.42, height: 0.87, kind: "chip", estimated: true },
+      { name: "ESP32-C6", x0: 7.12, x1: 14.26, y0: 5.55, y1: 12.7, height: 0.91, kind: "chip", estimated: true },
+      { name: "ceramic antenna", x0: 0.33, x1: 2.33, y0: 7.82, y1: 13.57, height: 0.76, kind: "chip", estimated: true },
+    ],
+  },
 };
 
-export const SBC_BOARD_ORDER: SbcBoardType[] = ["pi5", "pi4", "pi3bPlus", "zero2w", "bttPi12"];
+export const SBC_BOARD_ORDER: SbcBoardType[] = ["pi5", "pi4", "pi3bPlus", "zero2w", "bttPi12", "xiaoEsp32c6", "esp32c3SuperMini", "esp32c6SuperMini"];
 export const DEFAULT_SBC_BOARD: SbcBoardType = "pi5";
 /** Extra room for the connectors at the edge, so a case wall cut with the board leaves them a gap: 0 to 2 mm. */
 export const MAX_SBC_CLEARANCE = 2;

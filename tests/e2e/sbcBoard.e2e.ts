@@ -60,9 +60,11 @@ describe("the SBC board as a group", () => {
     const pcb = children[0];
     expect(pcb.name).toBe("Board");
     expect(pcb.color).toBe(board.color);
-    const pcbParts = pcb.groupedShapes ?? [];
+    // A board without mounting holes is the plate itself, a plain box when its corners are square.
+    const pcbParts = pcb.groupedShapes?.length ? pcb.groupedShapes : [pcb];
     expect(pcbParts.filter((part) => part.hole && part.kind === "cylinder")).toHaveLength(board.holes.length);
-    expect(pcbParts.filter((part) => !part.hole && part.kind === "roundedBox")).toHaveLength(1);
+    expect(pcbParts.filter((part) => !part.hole && part.kind === (board.cornerRadius > 0 ? "roundedBox" : "box"))).toHaveLength(1);
+    if (board.holes.length === 0) expect(pcb.groupedShapes ?? []).toEqual([]);
     expect(children.slice(1).map((child) => child.name)).toEqual(solids.map((solid) => solid.name));
     // A socket is a solid Port opening in its outline, everything else a box.
     children.slice(1).forEach((child, index) => {
