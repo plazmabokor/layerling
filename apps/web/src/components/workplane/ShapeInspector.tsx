@@ -213,7 +213,7 @@ import { iconKeyringAlongLimit } from "@/lib/sketchKeyring";
 import { DEFAULT_KEYRING_DIAMETER, curvedRadiusPatch, MAX_TEXT_LETTER_WIDTH, MAX_TEXT_SPACING, MIN_KEYRING_DIAMETER, MIN_TEXT_LETTER_WIDTH, MIN_TEXT_SPACING, TEXT_KEYRING_SIDES } from "@/lib/textGeometry";
 import { DEFAULT_TEXT_BLOCK_GAP, MAX_TEXT_BLOCK_GAP, MAX_TEXT_BLOCK_LINES, MAX_TEXT_BLOCK_STEP, MIN_TEXT_BLOCK_STEP, TEXT_BLOCK_ALIGNS, textBlockLines, type TextBlockAlign, type TextBlockOptions } from "@/lib/textBlock";
 import { limitedText, MAX_TEXT_LENGTH } from "@/lib/textLength";
-import { addTextLayer, MIN_LETTER_SIZE, MIN_NAME_TAG_LAYERS, NAME_TAG_GAP, NAME_TAG_LAYERS, NAME_TAG_LETTER_SIZE, removeTextLayer, textBaselineKeepShift, textLetterSize, textLetterSizePatch, textKerningPatch, textSpacingPatch, type NameTagStack } from "@/lib/nameTag";
+import { addTextLayer, MIN_LETTER_SIZE, MIN_NAME_TAG_LAYERS, NAME_TAG_GAP, NAME_TAG_LAYERS, NAME_TAG_LETTER_SIZE, removeTextLayer, tagHasLayerSteps, textBaselineKeepShift, textLetterSize, textLetterSizePatch, textKerningPatch, textSpacingPatch, type NameTagStack } from "@/lib/nameTag";
 import { FONT_MANAGER_OPTION, requestFontManager } from "@/lib/fontManagerEvents";
 import { FontPicker } from "@/components/workplane/FontPicker";
 import { SurfacePatternPicker } from "@/components/workplane/SurfacePatternPicker";
@@ -4951,6 +4951,7 @@ export function ShapeInspector({
           key={`name-tag-${shape.id}`}
           shapeId={shape.id}
           stack={nameTagStack}
+          layerSteps={tagHasLayerSteps(shape)}
           workspace={workspace}
           disabled={frozen}
           onLayerText={onLayerText}
@@ -4964,7 +4965,7 @@ export function ShapeInspector({
       {sbcBoard ? <SbcBoardCard key={`sbc-board-${shape.id}`} shapeId={shape.id} controls={sbcBoard} workspace={workspace} disabled={frozen} onInteractionActiveChange={onInteractionActiveChange} /> : null}
       {referenceImage ? <ReferenceImageCard key={`reference-image-${shape.id}`} shapeId={shape.id} controls={referenceImage} workspace={workspace} locked={frozen} onInteractionActiveChange={onInteractionActiveChange} /> : null}
       {iconTag?.isTag ? (
-        <IconTagCard key={`icon-tag-${shape.id}`} shapeId={shape.id} controls={iconTag} workspace={workspace} disabled={frozen} onInteractionActiveChange={onInteractionActiveChange} />
+        <IconTagCard key={`icon-tag-${shape.id}`} shapeId={shape.id} controls={iconTag} layerSteps={tagHasLayerSteps(shape)} workspace={workspace} disabled={frozen} onInteractionActiveChange={onInteractionActiveChange} />
       ) : iconTag ? (
         <MakeIconLayersButton disabled={frozen} onLayer={iconTag.onLayer} />
       ) : null}
@@ -5989,6 +5990,7 @@ function LayerRows({ layers, firstLabel, workspace, disabled, onChange, onIntera
 function NameTagCard({
   shapeId,
   stack,
+  layerSteps,
   workspace,
   disabled,
   onLayerText,
@@ -5997,6 +5999,8 @@ function NameTagCard({
 }: {
   shapeId: string;
   stack: NameTagStack;
+  /** A layer has a step of its own (texture, edges, paint), which building the layers anew takes off (Discussion #1692). */
+  layerSteps: boolean;
   workspace: WorkplaneWorkspaceSettings;
   disabled: boolean;
   onLayerText: (patch: TextLayerPatch) => void;
@@ -6028,6 +6032,7 @@ function NameTagCard({
           <GuideHelpLink chapter="text" section="textLayers" className="inspector-help-link" />
         </p>
       ) : null}
+      {open && layerSteps ? <p className="name-tag-hint name-tag-steps-note" role="note">{t("nameTag.layerStepsNote")}</p> : null}
       {open ? (
         <div className="property-list text-layers-body name-tag-body" id={`name-tag-${shapeId}`}>
           <ShapePropertyRows properties={properties} workspace={workspace} disabled={disabled} onInteractionActiveChange={onInteractionActiveChange} />
@@ -6508,9 +6513,11 @@ function KeyringAlongProperty({ keyring, limit, workspace, disabled, onChange, o
   );
 }
 
-function IconTagCard({ shapeId, controls, workspace, disabled, onInteractionActiveChange }: {
+function IconTagCard({ shapeId, controls, layerSteps, workspace, disabled, onInteractionActiveChange }: {
   shapeId: string;
   controls: IconTagControls;
+  /** A layer has a step of its own (texture, edges, paint), which building the layers anew takes off (Discussion #1692). */
+  layerSteps: boolean;
   workspace: WorkplaneWorkspaceSettings;
   disabled: boolean;
   onInteractionActiveChange?: (active: boolean) => void;
@@ -6550,6 +6557,7 @@ function IconTagCard({ shapeId, controls, workspace, disabled, onInteractionActi
           <GuideHelpLink chapter="text" section="iconTag" className="inspector-help-link" />
         </p>
       ) : null}
+      {open && layerSteps ? <p className="name-tag-hint name-tag-steps-note" role="note">{t("nameTag.layerStepsNote")}</p> : null}
       {open ? (
         <div className="property-list text-layers-body name-tag-body" id={`icon-tag-${shapeId}`}>
           <input

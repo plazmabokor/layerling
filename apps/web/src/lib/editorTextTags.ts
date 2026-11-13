@@ -16,6 +16,7 @@ import { strokedSketchProfile } from "@/lib/sketchStroke";
 import type { FreeKeyring, SketchProfile, WorkplaneShape } from "@/types/layerling";
 import { getManifoldRuntime } from "@/lib/editorMeshCore";
 import { groupedShape, restoreGroupedChildren } from "@/lib/editorBooleans";
+import { restoreShapeBeforeEdgeTreatment } from "@/lib/edgeTreatmentHistory";
 import { cadShapeFromSketchProfile } from "@/lib/editorSketchCad";
 import { iconFileName } from "@/lib/pictureIcon";
 
@@ -41,7 +42,17 @@ export function textLayerStack(shape: WorkplaneShape): TextLayerStack | null {
     return textLayersOf([shape]);
   }
   if (!shape.layeredText || !shape.groupedShapes?.length) return null;
-  return textLayersOf(restoreGroupedChildren(shape));
+  return textLayersOf(restoreGroupedChildren(shape).map(tagLayerUnderTexture));
+}
+
+/**
+ * A layer of a name tag or an icon tag as the tag reads it (Discussion #1692). A layer opened and given a step of its
+ * own - a surface texture, rounded or bevelled edges - is no longer the sketch or text the tag is read from, so it is
+ * read by the body it was before that first step, which the step keeps; anything else as it is.
+ */
+export function tagLayerUnderTexture(shape: WorkplaneShape): WorkplaneShape {
+  const first = shape.edgeTreatmentHistory?.[0];
+  return first ? restoreShapeBeforeEdgeTreatment(shape, first) : shape;
 }
 
 /**
@@ -107,11 +118,24 @@ export function offersIconLayers(shape: WorkplaneShape | null | undefined) {
   return Boolean(shape.layeredIcon && shape.groupOperation === "bundle" && shape.groupedShapes?.length);
 }
 
+/**
+ * What a name tag or an icon tag that was opened (Edit bundle, or a layer picked in the object list) keeps when Done
+ * builds it again from its parts (Discussion #1692): its flag, and with it its card, as long as the parts still read
+ * as its layers. A part added, taken out or set apart leaves a plain bundle, as before.
+ */
+export function layerTagFlagsAfterRebuild(original: Pick<WorkplaneShape, "layeredText" | "layeredIcon">, parts: WorkplaneShape[]): Pick<WorkplaneShape, "layeredText" | "layeredIcon"> {
+  if (parts.length < 2) return {};
+  const layers = parts.map(tagLayerUnderTexture);
+  if (original.layeredText && textLayersOf(layers)) return { layeredText: true };
+  if (original.layeredIcon && iconLayersOf(layers)) return { layeredIcon: true };
+  return {};
+}
+
 /** The icon and layers a shape stands for: a sketch body is one layer of itself; an icon tag is read from its parts. */
 export function iconLayerStack(shape: WorkplaneShape): IconLayerStack | null {
   if (isIconLayerBody(shape)) return iconLayersOf([shape]);
   if (!shape.layeredIcon || !shape.groupedShapes?.length) return null;
-  return iconLayersOf(restoreGroupedChildren(shape));
+  return iconLayersOf(restoreGroupedChildren(shape).map(tagLayerUnderTexture));
 }
 
 /**
