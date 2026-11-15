@@ -15,6 +15,7 @@ import { createStarGeometry } from "@/lib/starGeometry";
 import { createHeartGeometry } from "@/lib/heartGeometry";
 import { createCrescentGeometry } from "@/lib/crescentGeometry";
 import { createSectorGeometry } from "@/lib/sectorGeometry";
+import { createRoundedPolygonGeometry } from "@/lib/roundedPolygonGeometry";
 import { createSlotGeometry } from "@/lib/slotGeometry";
 import { createDovetailGeometry } from "@/lib/dovetailGeometry";
 import { createLoftGeometry } from "@/lib/loftGeometry";
@@ -772,7 +773,9 @@ function geometryMeshForShape(shape: WorkplaneShape): MeshData | null {
       geometry = createBooleanWedgeGeometry(width, height, depth);
       break;
     case "polygon":
-      geometry = createPrismGeometry(width, height, depth, shape.sides ?? 6);
+      geometry = (shape.cornerFillet ?? 0) > 0
+        ? createRoundedPolygonGeometry(width, height, depth, shape.sides ?? 6, shape.cornerFillet ?? 0)
+        : createPrismGeometry(width, height, depth, shape.sides ?? 6);
       break;
     case "icosahedron":
       geometry = new THREE.IcosahedronGeometry(size / 2, 1);

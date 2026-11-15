@@ -109,6 +109,7 @@ import {
   normalizeCrescentThickness,
   normalizeCrescentTipFillet,
 } from "@/lib/crescentGeometry";
+import { normalizePolygonCornerRadius } from "@/lib/roundedPolygonGeometry";
 import { DEFAULT_SECTOR_ANGLE, DEFAULT_SECTOR_DIAMETER, DEFAULT_SECTOR_END_RADIUS, DEFAULT_SECTOR_HEIGHT, DEFAULT_SECTOR_INNER_DIAMETER, normalizeSectorAngle, normalizeSectorEndRadius, normalizeSectorInnerDiameter } from "@/lib/sectorGeometry";
 import {
   DEFAULT_SLOT_WIDTH,
@@ -1397,7 +1398,9 @@ export function makeShapeFromAsset(
     // A chamfer at the rim of a counterbore (Discussion #1632); left out when off, as the editor leaves it.
     screwHoleChamfer: asset.kind === "counterbore" && (customization.screwHoleChamfer ?? 0) > 0 ? customization.screwHoleChamfer : undefined,
     cornerFillet: asset.kind === "roundedBox" ? normalizeCornerFillet(customization.cornerFillet ?? DEFAULT_ROUNDED_BOX_CORNER_FILLET, Math.min(width, depth) / 2)
-      : asset.kind === "port" ? normalizePortCorner(customization.cornerFillet, width, height, customization.portProfile) : undefined,
+      : asset.kind === "port" ? normalizePortCorner(customization.cornerFillet, width, height, customization.portProfile)
+        // A polygon's rounded corners (roundedPolygonGeometry.ts); left out while they are sharp.
+        : asset.kind === "polygon" && (customization.cornerFillet ?? 0) > 0 ? normalizePolygonCornerRadius(customization.cornerFillet, width, depth, customization.sides ?? 6) : undefined,
     portProfile: asset.kind === "port" ? normalizePortProfile(customization.portProfile) : undefined,
     portClearance: asset.kind === "port" && normalizePortClearance(customization.portClearance) > 0 ? normalizePortClearance(customization.portClearance) : undefined,
     ...(asset.kind === "roundedBox"
