@@ -1041,6 +1041,7 @@ export const MESSAGES_TR: Partial<Record<MessageKey, string>> = {
   "holePattern.rack.standard": "{units}U standart panel ({height} mm)",
   "holePattern.rack.slots": "Köşelerde dört adet {length} × {width} mm oval delik, enine {across} mm aralıkla, rack raylarına.",
   "holePattern.rack.placed": "Dikeyde aralarında {spacing} mm var, üst ve alt kenardan {edge} mm, rayın deliklerine denk gelir.",
+  "holePattern.rack.space": "Panel rack'te {units}U yer kaplar ve ortasında durur, böylece her ünitede oturur.",
   "holePattern.rack.notStandard": "Standart bir {units}U panel {panel} × {height} mm'dir; bu panel {own} mm yüksekliğinde.",
   "holePattern.rack.narrow": "19″ rack için çok dar: genişlik {width} mm, bir rack paneli {panel} mm'dir.",
   "holePattern.rack.low": "Delikler için çok alçak: {height} mm'de üst ve alt oval delikler sığmıyor.",

@@ -1871,6 +1871,7 @@ export const MESSAGES_SV: Partial<Record<MessageKey, string>> = {
   "holePattern.rack.standard": "Standardpanel {units}U ({height} mm)",
   "holePattern.rack.slots": "Fyra avlånga hål {length} × {width} mm i hörnen, {across} mm isär på bredden, för rackets skenor.",
   "holePattern.rack.placed": "På höjden sitter de {spacing} mm isär, {edge} mm från över- och underkanten, på skenans hål.",
+  "holePattern.rack.space": "Panelen tar {units}U i racket och sitter mitt i dem, så den passar på vilken enhet som helst.",
   "holePattern.rack.notStandard": "En standardpanel på {units}U är {panel} × {height} mm; den här är {own} mm hög.",
   "holePattern.rack.narrow": "För smal för ett 19″-rack: {width} mm bred, en rackpanel är {panel} mm.",
   "holePattern.rack.low": "För låg för hålen: vid {height} mm får de övre och undre hålen inte plats.",

@@ -1712,6 +1712,7 @@ export const MESSAGES_PT_PT: Partial<Record<MessageKey, string>> = {
   "holePattern.rack.standard": "Painel normalizado de {units}U ({height} mm)",
   "holePattern.rack.slots": "Quatro furos oblongos de {length} × {width} mm nos cantos, a {across} mm na largura, para as calhas do bastidor.",
   "holePattern.rack.placed": "Na altura ficam a {spacing} mm entre si, a {edge} mm das arestas superior e inferior, sobre os furos da calha.",
+  "holePattern.rack.space": "O painel ocupa {units}U do bastidor e fica ao meio, por isso encaixa em qualquer unidade.",
   "holePattern.rack.notStandard": "Um painel normalizado de {units}U mede {panel} × {height} mm; este tem {own} mm de altura.",
   "holePattern.rack.narrow": "Demasiado estreito para um bastidor 19″: {width} mm de largura, um painel de bastidor tem {panel} mm.",
   "holePattern.rack.low": "Demasiado baixo para os furos: com {height} mm os furos de cima e de baixo não cabem.",

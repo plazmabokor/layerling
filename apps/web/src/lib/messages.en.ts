@@ -1800,6 +1800,7 @@ export const MESSAGES_EN = {
   "holePattern.rack.standard": "{units}U standard panel ({height} mm)",
   "holePattern.rack.slots": "Four {length} × {width} mm slots in the corners, {across} mm apart across, for the rack's rails.",
   "holePattern.rack.placed": "Up the panel they are {spacing} mm apart, {edge} mm from the upper and lower edges, on the rails' holes.",
+  "holePattern.rack.space": "The panel takes {units}U of the rack and sits in its middle, so it fits on any unit.",
   "holePattern.rack.notStandard": "A standard {units}U panel is {panel} × {height} mm; this one is {own} mm high.",
   "holePattern.rack.narrow": "Too narrow for a 19″ rack: {width} mm across, a rack panel is {panel} mm wide.",
   "holePattern.rack.low": "Too low for the holes: at {height} mm the upper and lower slots do not fit.",

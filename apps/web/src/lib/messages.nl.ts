@@ -1799,6 +1799,7 @@ export const MESSAGES_NL: Record<MessageKey, string> = {
   "holePattern.rack.standard": "Standaardpaneel {units}U ({height} mm)",
   "holePattern.rack.slots": "Vier sleufgaten van {length} × {width} mm in de hoeken, {across} mm uit elkaar in de breedte, voor de rails van het rack.",
   "holePattern.rack.placed": "In de hoogte liggen ze {spacing} mm uit elkaar, {edge} mm van de boven- en onderrand, op de gaten van de rail.",
+  "holePattern.rack.space": "Het paneel neemt {units}U van het rack in en zit in het midden daarvan, zodat het op elke eenheid past.",
   "holePattern.rack.notStandard": "Een standaardpaneel van {units}U is {panel} × {height} mm; dit is {own} mm hoog.",
   "holePattern.rack.narrow": "Te smal voor een 19″-rack: {width} mm breed, een rackpaneel is {panel} mm.",
   "holePattern.rack.low": "Te laag voor de gaten: bij {height} mm passen de bovenste en onderste sleufgaten niet.",

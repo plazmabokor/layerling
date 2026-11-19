@@ -572,6 +572,8 @@ export type RackFit = {
   /** Up the panel: centre to centre of the lower and upper holes, and from a hole's middle to the nearer edge. */
   spacing: number;
   edge: number;
+  /** How many units of the rack the panel takes; it sits in their middle. */
+  space: number;
   /** A standard height that was asked for, and the height its panel has. */
   units?: number;
   standardHeight?: number;
@@ -585,23 +587,28 @@ export function normalizeRackUnits(value: unknown) {
 }
 
 /**
- * The longest distance between two holes of a rack's rail that is no more than `limit`, or 0. The rail repeats every
- * unit with holes 5/8, 5/8 and 1/2 inch apart, so a panel that is no whole number of units still gets two holes that
- * lie on the rail, and they sit the same distance from its upper and lower edges.
+ * The holes of a panel of any height on a rack's rail. The panel takes the fewest whole units it fits in and sits in
+ * their middle, so it never reaches into its neighbours' room and fits on any unit of the rack. The rail's holes are
+ * the same about the middle of any whole number of units (1/4, 7/8 and 1 1/2 inch up each unit), so the outermost two
+ * that keep RACK_EDGE to the panel's edges lie the same distance from its upper and lower edges.
  */
-export function rackRailSpacing(limit: number) {
-  if (!(limit > 0)) return 0;
-  const units = Math.ceil(limit / RACK_UNIT) + 2;
-  const holes: number[] = [];
-  for (let unit = 0; unit < units; unit += 1) for (const hole of RACK_RAIL_HOLES) holes.push(unit * RACK_UNIT + hole);
-  let best = 0;
-  for (const first of holes.slice(0, RACK_RAIL_HOLES.length)) {
-    for (const other of holes) {
-      const distance = Math.round((other - first) * 1e6) / 1e6;
-      if (distance <= limit + 1e-9 && distance > best) best = distance;
+export function rackPanelFit(height: number): { units: number; spacing: number; edge: number } | null {
+  if (!(height > 0)) return null;
+  const units = Math.max(1, Math.ceil(height / RACK_UNIT - 1e-9));
+  const room = units * RACK_UNIT;
+  const below = (room - height) / 2;
+  for (let unit = 0; unit < units; unit += 1) {
+    for (const hole of RACK_RAIL_HOLES) {
+      const position = unit * RACK_UNIT + hole;
+      if (position >= room / 2) return null;
+      const edge = position - below;
+      if (edge >= RACK_EDGE - 1e-6) {
+        const round = (value: number) => Math.round(value * 1e6) / 1e6;
+        return { units, spacing: round(room - 2 * position), edge: round(edge) };
+      }
     }
   }
-  return best;
+  return null;
 }
 
 /** The smallest rectangle round a face's hull: it lies along one of the hull's sides; the face's own x wins a tie. */
@@ -650,7 +657,8 @@ export function rackCenters(loops: readonly Point2[][], settings: Pick<HolePatte
   const angle = normalizeHoleAngle((-turn * 180) / Math.PI);
   const units = normalizeRackUnits(settings.rackUnits);
   const standard = units > 0 ? RACK_STANDARD_PANELS[units - 1] : null;
-  const spacing = standard ? standard.spacing : rackRailSpacing(height - 2 * RACK_EDGE);
+  const fitted = standard ? null : rackPanelFit(height);
+  const spacing = standard ? standard.spacing : fitted?.spacing ?? 0;
   const round = (value: number) => Math.round(value * 1000) / 1000;
   const fit: RackFit = {
     ok: false,
@@ -658,6 +666,7 @@ export function rackCenters(loops: readonly Point2[][], settings: Pick<HolePatte
     height: round(height),
     spacing,
     edge: Math.round(((height - spacing) / 2) * 1e6) / 1e6,
+    space: standard ? units : fitted?.units ?? 0,
     angle,
     ...(standard ? { units, standardHeight: standard.height } : {}),
   };

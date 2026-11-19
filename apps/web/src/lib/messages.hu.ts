@@ -1597,6 +1597,7 @@ export const MESSAGES_HU: Partial<Record<MessageKey, string>> = {
   "holePattern.rack.standard": "{units}U szabványos panel ({height} mm)",
   "holePattern.rack.slots": "Négy {length} × {width} mm-es hosszlyuk a sarkokban, keresztben {across} mm-re egymástól, a rack sínjeihez.",
   "holePattern.rack.placed": "Függőlegesen {spacing} mm-re vannak egymástól, a felső és az alsó széltől {edge} mm-re, a sín furataira.",
+  "holePattern.rack.space": "A panel {units}U helyet foglal a rackben, annak a közepén, így bármelyik U-nál ráillik a sínre.",
   "holePattern.rack.notStandard": "A szabványos {units}U panel {panel} × {height} mm; ez a lap {own} mm magas.",
   "holePattern.rack.narrow": "Túl keskeny a 19″ rackhez: {width} mm széles, a rackpanel {panel} mm.",
   "holePattern.rack.low": "Túl alacsony a furatokhoz: {height} mm-en nem fér el a felső és az alsó hosszlyuk.",

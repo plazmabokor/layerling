@@ -1938,6 +1938,7 @@ export const MESSAGES_CS: Record<MessageKey, string> = {
   "holePattern.rack.standard": "Standardní panel {units}U ({height} mm)",
   "holePattern.rack.slots": "Čtyři podélné otvory {length} × {width} mm v rozích, napříč {across} mm od sebe, pro lišty racku.",
   "holePattern.rack.placed": "Svisle jsou {spacing} mm od sebe, {edge} mm od horní a dolní hrany, na otvorech lišty.",
+  "holePattern.rack.space": "Panel zabírá {units}U racku a sedí uprostřed, takže pasuje na kteroukoli jednotku.",
   "holePattern.rack.notStandard": "Standardní panel {units}U má {panel} × {height} mm; tento je vysoký {own} mm.",
   "holePattern.rack.narrow": "Příliš úzký pro rack 19″: šířka {width} mm, panel do racku má {panel} mm.",
   "holePattern.rack.low": "Příliš nízký pro otvory: při {height} mm se horní a dolní otvory nevejdou.",

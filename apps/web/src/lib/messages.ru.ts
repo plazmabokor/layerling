@@ -1796,6 +1796,7 @@ export const MESSAGES_RU: Partial<Record<MessageKey, string>> = {
   "holePattern.rack.standard": "Стандартная панель {units}U ({height} мм)",
   "holePattern.rack.slots": "Четыре продолговатых отверстия {length} × {width} мм по углам, {across} мм друг от друга по ширине, под направляющие стойки.",
   "holePattern.rack.placed": "По высоте они в {spacing} мм друг от друга, в {edge} мм от верхнего и нижнего края, на отверстиях направляющей.",
+  "holePattern.rack.space": "Панель занимает {units}U стойки и стоит посередине, поэтому подходит на любой юнит.",
   "holePattern.rack.notStandard": "Стандартная панель {units}U имеет размер {panel} × {height} мм; эта высотой {own} мм.",
   "holePattern.rack.narrow": "Слишком узко для стойки 19″: ширина {width} мм, панель стойки шириной {panel} мм.",
   "holePattern.rack.low": "Слишком низко для отверстий: при {height} мм верхние и нижние отверстия не помещаются.",

@@ -1881,6 +1881,7 @@ export const MESSAGES_AR: Partial<Record<MessageKey, string>> = {
   "holePattern.rack.standard": "لوحة قياسية {units}U ({height} مم)",
   "holePattern.rack.slots": "أربع فتحات مستطيلة {length} × {width} مم في الزوايا، المسافة بينها عرضًا {across} مم، لقضبان الحامل.",
   "holePattern.rack.placed": "رأسيًا المسافة بينها {spacing} مم، وعلى بعد {edge} مم من الحافتين العليا والسفلى، فوق ثقوب القضيب.",
+  "holePattern.rack.space": "تشغل اللوحة {units}U من الحامل وتقع في منتصفها، لذا تناسب أي وحدة.",
   "holePattern.rack.notStandard": "اللوحة القياسية {units}U مقاسها {panel} × {height} مم؛ وهذه ارتفاعها {own} مم.",
   "holePattern.rack.narrow": "ضيقة جدًا لحامل 19″: عرضها {width} مم، ولوحة الحامل عرضها {panel} مم.",
   "holePattern.rack.low": "منخفضة جدًا للثقوب: عند {height} مم لا تتسع الفتحات العليا والسفلى.",

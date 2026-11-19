@@ -5054,6 +5054,7 @@ export const MESSAGES_SL: Partial<Record<MessageKey, string>> = {
   "holePattern.rack.standard": "Standardna plošča {units}U ({height} mm)",
   "holePattern.rack.slots": "Štiri podolgovate luknje {length} × {width} mm v kotih, po širini {across} mm narazen, za vodila racka.",
   "holePattern.rack.placed": "Po višini so {spacing} mm narazen, {edge} mm od zgornjega in spodnjega roba, na luknjah vodila.",
+  "holePattern.rack.space": "Plošča zaseda {units}U racka in je na sredini, zato se prilega na katero koli enoto.",
   "holePattern.rack.notStandard": "Standardna plošča {units}U meri {panel} × {height} mm; ta je visoka {own} mm.",
   "holePattern.rack.narrow": "Preozko za 19″ rack: široko {width} mm, plošča za rack je široka {panel} mm.",
   "holePattern.rack.low": "Prenizko za luknje: pri {height} mm zgornje in spodnje luknje ne gredo nanjo.",

@@ -1755,6 +1755,7 @@ export const MESSAGES_ZH_TW: Partial<Record<MessageKey, string>> = {
   "holePattern.rack.standard": "{units}U 標準面板（{height} mm）",
   "holePattern.rack.slots": "四角各一個 {length} × {width} mm 的長孔，橫向間距 {across} mm，用於機架導軌。",
   "holePattern.rack.placed": "縱向間距 {spacing} mm，距上下邊緣 {edge} mm，對準導軌的孔。",
+  "holePattern.rack.space": "面板佔用機架的 {units}U 並置中，因此適合任何單元。",
   "holePattern.rack.notStandard": "{units}U 標準面板為 {panel} × {height} mm；此面板高 {own} mm。",
   "holePattern.rack.narrow": "對 19″ 機架來說太窄：寬 {width} mm，機架面板寬 {panel} mm。",
   "holePattern.rack.low": "太矮放不下孔：{height} mm 高時上下長孔放不下。",

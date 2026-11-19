@@ -171,6 +171,7 @@ export function HolePatternPanel({
       : [
             rackSlots,
             t("holePattern.rack.placed", { spacing: millimetres2(rack.spacing), edge: millimetres2(rack.edge) }),
+            rack.units ? "" : t("holePattern.rack.space", { units: rack.space }),
             rack.units && rack.standardHeight !== undefined && Math.abs(rack.height - rack.standardHeight) > 0.05
               ? t("holePattern.rack.notStandard", { units: rack.units, height: millimetres2(rack.standardHeight), panel: millimetres2(RACK_PANEL_WIDTH), own: millimetres2(rack.height) })
               : "",

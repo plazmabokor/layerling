@@ -4,7 +4,7 @@ import {
   holePatternCenters,
   normalizeHolePattern,
   rackCenters,
-  rackRailSpacing,
+  rackPanelFit,
   RACK_HOLE_SPACING,
   RACK_SLOT_LENGTH,
   RACK_SLOT_WIDTH,
@@ -18,24 +18,34 @@ const sorted = (points: Array<{ u: number; v: number }>) => points.map((p) => [N
 const settings = (patch = {}) => normalizeHolePattern({ form: "round", size: 4.3, arrangement: "corners", margin: 5, rack: true, ...patch });
 
 /** The rail's holes, 1/4, 7/8 and 1 1/2 inch up every 1 3/4 inch unit (EIA-310). */
-const railHoles = Array.from({ length: 12 }, (_, unit) => [6.35, 22.225, 38.1].map((hole) => unit * 44.45 + hole)).flat();
+const railHoles = Array.from({ length: 20 }, (_, unit) => [6.35, 22.225, 38.1].map((hole) => unit * 44.45 + hole)).flat();
 const onRail = (spacing: number) => railHoles.some((a) => railHoles.some((b) => Math.abs(b - a - spacing) < 1e-6));
 
 describe("19 inch rack holes", () => {
-  it("finds the longest distance between two rail holes that fits", () => {
-    expect(rackRailSpacing(43.65 - 2 * 5.95)).toBeCloseTo(31.75, 6);
-    expect(rackRailSpacing(88.1 - 2 * 5.95)).toBeCloseTo(76.2, 6);
-    // A 74 mm panel: four steps of the rail, 5/8 + 1/2 + 5/8 + 5/8 inch.
-    expect(rackRailSpacing(74 - 2 * 5.95)).toBeCloseTo(60.325, 6);
-    expect(rackRailSpacing(10)).toBe(0);
-    for (const limit of [20, 33, 50, 62.1, 99, 150, 260]) expect(onRail(rackRailSpacing(limit))).toBe(true);
+  it("puts a panel of any height in the middle of the whole units it takes, its holes on the rail and alike from both edges", () => {
+    expect(rackPanelFit(43.65)).toEqual({ units: 1, spacing: 31.75, edge: 5.95 });
+    expect(rackPanelFit(88.1)).toEqual({ units: 2, spacing: 76.2, edge: 5.95 });
+    // 74 mm takes two units; centred in them, the rail holes 7/8 inch up the lower and 7/8 inch down the upper one.
+    expect(rackPanelFit(74)).toEqual({ units: 2, spacing: 44.45, edge: 14.775 });
+    expect(rackPanelFit(44.45)).toEqual({ units: 1, spacing: 31.75, edge: 6.35 });
+    // On any unit of the rack: the panel's room starts on a unit's edge, so both holes meet rail holes there.
+    for (const height of [20, 30, 43.65, 50, 74, 80, 100, 132.55, 150, 200, 265.9]) {
+      const fit = rackPanelFit(height);
+      if (!fit) continue;
+      const room = fit.units * 44.45;
+      const lower = (room - height) / 2 + fit.edge;
+      for (const unit of [0, 3, 7]) {
+        for (const y of [lower, lower + fit.spacing]) expect(railHoles.some((hole) => Math.abs(hole - (unit * 44.45 + y)) < 1e-5)).toBe(true);
+      }
+      expect(height - (fit.edge * 2 + fit.spacing)).toBeCloseTo(0, 6);
+      expect(fit.edge).toBeGreaterThanOrEqual(5.95 - 1e-6);
+    }
   });
 
   it("puts four slots 465.1 mm apart on a 74 mm panel, the same distance from its upper and lower edges", () => {
     const result = holePatternCenters({ loops: [rect(482.6, 74)] }, settings());
-    expect(sorted(result.centers)).toEqual([[-232.55, -30.1625], [-232.55, 30.1625], [232.55, -30.1625], [232.55, 30.1625]]);
-    expect(result.rack).toMatchObject({ ok: true, spacing: 60.325, angle: 0 });
-    expect(result.rack?.edge).toBeCloseTo(6.8375, 6);
+    expect(sorted(result.centers)).toEqual([[-232.55, -22.225], [-232.55, 22.225], [232.55, -22.225], [232.55, 22.225]]);
+    expect(result.rack).toMatchObject({ ok: true, spacing: 44.45, edge: 14.775, space: 2, angle: 0 });
   });
 
   it("places the standard panels' holes as IEC 60297-3-100 has them", () => {
@@ -55,7 +65,7 @@ describe("19 inch rack holes", () => {
 
   it("lays the slots along the panel's width when the panel stands the other way in the face", () => {
     const result = holePatternCenters({ loops: [rect(74, 482.6)] }, settings());
-    expect(sorted(result.centers)).toEqual([[-30.1625, -232.55], [-30.1625, 232.55], [30.1625, -232.55], [30.1625, 232.55]]);
+    expect(sorted(result.centers)).toEqual([[-22.225, -232.55], [-22.225, 232.55], [22.225, -232.55], [22.225, 232.55]]);
     expect(result.rack?.angle).toBe(90);
   });
 
@@ -86,7 +96,7 @@ describe("19 inch rack holes", () => {
     const xs = plan.holes.map((hole) => hole.x).sort((a, b) => a - b);
     const zs = plan.holes.map((hole) => hole.z).sort((a, b) => a - b);
     expect(xs[3] - xs[0]).toBeCloseTo(RACK_HOLE_SPACING, 3);
-    expect(zs[3] - zs[0]).toBeCloseTo(60.325, 3);
+    expect(zs[3] - zs[0]).toBeCloseTo(44.45, 3);
     for (const hole of plan.holes) {
       expect(hole.hole).toBe(true);
       expect(hole.kind).not.toBe("countersink");

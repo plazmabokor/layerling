@@ -1799,6 +1799,7 @@ export const MESSAGES_DE: Record<MessageKey, string> = {
   "holePattern.rack.standard": "{units} HE Standardplatte ({height} mm)",
   "holePattern.rack.slots": "Vier Langlöcher {length} × {width} mm in den Ecken, quer {across} mm auseinander, für die Schienen des Racks.",
   "holePattern.rack.placed": "In der Höhe liegen sie {spacing} mm auseinander, {edge} mm von der oberen und unteren Kante, auf den Löchern der Schiene.",
+  "holePattern.rack.space": "Die Platte belegt {units} HE im Rack und sitzt in deren Mitte, so passt sie auf jede Höheneinheit.",
   "holePattern.rack.notStandard": "Eine Standardplatte mit {units} HE misst {panel} × {height} mm; diese ist {own} mm hoch.",
   "holePattern.rack.narrow": "Zu schmal für ein 19″-Rack: {width} mm breit, eine Rackplatte ist {panel} mm breit.",
   "holePattern.rack.low": "Zu niedrig für die Löcher: bei {height} mm passen die oberen und unteren Langlöcher nicht.",

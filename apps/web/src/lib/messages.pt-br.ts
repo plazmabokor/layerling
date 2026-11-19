@@ -3351,6 +3351,7 @@ export const MESSAGES_PT_BR: Partial<Record<MessageKey, string>> = {
   "holePattern.rack.standard": "Painel padrão de {units}U ({height} mm)",
   "holePattern.rack.slots": "Quatro furos oblongos de {length} × {width} mm nos cantos, a {across} mm na largura, para os trilhos do rack.",
   "holePattern.rack.placed": "Na altura ficam a {spacing} mm entre si, a {edge} mm das bordas superior e inferior, sobre os furos do trilho.",
+  "holePattern.rack.space": "O painel ocupa {units}U do rack e fica no meio, então encaixa em qualquer unidade.",
   "holePattern.rack.notStandard": "Um painel padrão de {units}U mede {panel} × {height} mm; este tem {own} mm de altura.",
   "holePattern.rack.narrow": "Estreito demais para um rack 19″: {width} mm de largura, um painel de rack tem {panel} mm.",
   "holePattern.rack.low": "Baixo demais para os furos: com {height} mm os furos de cima e de baixo não cabem.",

@@ -1850,6 +1850,7 @@ export const MESSAGES_JA: Partial<Record<MessageKey, string>> = {
   "holePattern.rack.standard": "{units}U 標準パネル（{height} mm）",
   "holePattern.rack.slots": "四隅に {length} × {width} mm の長穴を4つ、横に {across} mm 間隔、ラックのレール用。",
   "holePattern.rack.placed": "縦の間隔は {spacing} mm、上下の端から {edge} mm で、レールの穴に合います。",
+  "holePattern.rack.space": "パネルはラックの {units}U を使い、その中央に収まるので、どのユニットにも合います。",
   "holePattern.rack.notStandard": "{units}U の標準パネルは {panel} × {height} mm です。このパネルの高さは {own} mm です。",
   "holePattern.rack.narrow": "19″ラックには幅が足りません：幅 {width} mm、ラックパネルは {panel} mm です。",
   "holePattern.rack.low": "穴には低すぎます：{height} mm では上下の長穴が収まりません。",

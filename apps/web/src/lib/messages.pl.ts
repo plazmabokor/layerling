@@ -1761,6 +1761,7 @@ export const MESSAGES_PL: Partial<Record<MessageKey, string>> = {
   "holePattern.rack.standard": "Panel standardowy {units}U ({height} mm)",
   "holePattern.rack.slots": "Cztery otwory podłużne {length} × {width} mm w narożnikach, {across} mm od siebie w poziomie, do szyn szafy rack.",
   "holePattern.rack.placed": "W pionie są {spacing} mm od siebie, {edge} mm od górnej i dolnej krawędzi, na otworach szyny.",
+  "holePattern.rack.space": "Panel zajmuje {units}U w szafie i leży na ich środku, więc pasuje na każdej jednostce.",
   "holePattern.rack.notStandard": "Standardowy panel {units}U ma {panel} × {height} mm; ten ma {own} mm wysokości.",
   "holePattern.rack.narrow": "Za wąski na szafę 19″: {width} mm szerokości, panel rack ma {panel} mm.",
   "holePattern.rack.low": "Za niski na otwory: przy {height} mm górne i dolne otwory się nie mieszczą.",
