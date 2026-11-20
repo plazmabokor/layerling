@@ -2717,6 +2717,7 @@ export const MESSAGES_DE: Record<MessageKey, string> = {
   "inspector.hole": "Aussparung",
   "inspector.transparent": "Durchsichtig darstellen",
   "inspector.multicolor": "Mehrfarbig",
+  "inspector.partColors": "Farben der Teile",
   "inspector.groupResize": "Beim Ändern der Größe",
   "inspector.groupResizeStretch": "Alles strecken",
   "inspector.groupResizeKeepParts": "Aussparungen und kleine Teile behalten",
