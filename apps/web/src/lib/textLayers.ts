@@ -341,8 +341,7 @@ export function textLayerShapes(source: WorkplaneShape, layers: readonly TextLay
       size: 0,
       ...(stroke ? { textStroke: stroke } : {}),
       ...(layer.silhouette ? { textSilhouette: true } : {}),
-      // An inlaid tag's face is flat: no rounded or chamfered letter edge (#215).
-      ...(layer.edge && !layerFlush ? { textEdge: layer.edge } : {}),
+      ...(layer.edge ? { textEdge: layer.edge } : {}),
       ...(layerKeyring ? { textKeyring: layerKeyring } : {}),
       ...(layerFlush ? { textFlush: layerFlush } : {}),
     };

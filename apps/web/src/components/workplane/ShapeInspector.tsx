@@ -6277,8 +6277,7 @@ function NameTagCard({
   const [open, setOpen] = useState(true);
   const { source, layers, keyring } = stack;
   // A long text takes no letter edge (MAX_EDGED_TEXT_LENGTH): the buttons are greyed out and a line says why.
-  // An inlaid tag (#215) has a flat face: a rounded or chamfered letter edge would leave a groove round the letters.
-  const edgeAllowed = textAllowsEdge(source) && !stack.flush;
+  const edgeAllowed = textAllowsEdge(source);
   const writeLayers = (next: TextLayer[]) => onLayerText({ layers: next });
   const changeLayer = (index: number, changes: Partial<TextLayer>) => writeLayers(layers.map((entry, position) => (position === index ? { ...entry, ...changes } : entry)));
   const properties: ShapePropertyConfig[] = [
@@ -6326,7 +6325,7 @@ function NameTagCard({
               );
             })}
           </div>
-          {edgeAllowed || stack.flush ? null : <p className="property-hint">{t("nameTag.letterEdgeTooLong", { max: MAX_EDGED_TEXT_LENGTH })}</p>}
+          {edgeAllowed ? null : <p className="property-hint">{t("nameTag.letterEdgeTooLong", { max: MAX_EDGED_TEXT_LENGTH })}</p>}
           {edgeAllowed && layers[0]?.edge ? (
             <RangeProperty
               id="letterEdgeSize"

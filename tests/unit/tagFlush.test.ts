@@ -118,6 +118,22 @@ describe("name tag laid in flush (#215)", () => {
     [union, plate, ...solids].forEach((solid) => solid.delete());
   });
 
+  it("a rounded letter edge stays on an inlaid tag, and the colours still never overlap", () => {
+    const edged: TextLayer[] = [{ ...layers[0], edge: { kind: "round", size: 0.4 } }, layers[1], layers[2]];
+    const parts = textLayerShapes(text(), edged, [], null, { depth: 0.8 });
+    expect(parts[0].textEdge).toEqual({ kind: "round", size: 0.4 });
+    const solids = layerSolids(parts);
+    const sum = solids.reduce((total, solid) => total + solid.volume(), 0);
+    const union = runtime.Manifold.union(solids);
+    expect(sum).toBeCloseTo(union.volume(), 1);
+    [union, ...solids].forEach((solid) => solid.delete());
+  });
+
+  it("starts 0.8 mm deep", () => {
+    expect(DEFAULT_FLUSH_DEPTH).toBe(0.8);
+    expect(textLayerShapes(text(), layers, [], null, { depth: DEFAULT_FLUSH_DEPTH })[0].height).toBe(0.8);
+  });
+
   it("a depth too deep for the bottom layer leaves a floor of one print layer", () => {
     expect(flushDepthFor(5, 2)).toBe(1.8);
     expect(flushDepthFor(0.05, 2)).toBe(MIN_FLUSH_DEPTH);

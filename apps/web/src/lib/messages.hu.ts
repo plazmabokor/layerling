@@ -2677,7 +2677,7 @@ export const MESSAGES_HU: Partial<Record<MessageKey, string>> = {
   "nameTag.noHoles": "Lyukak nélkül",
   "nameTag.flush": "Sík intarzia",
   "nameTag.flushDepth": "Intarzia mélysége",
-  "nameTag.flushDepthHint": "Milyen mélyen ülnek a színek a legalsó rétegben.",
+  "nameTag.flushDepthHint": "Ajánlott: 0,8 mm (négy 0,2 mm-es réteg) PLA-hoz – ennyinél a sötét szín általában már nem üt át a világoson. Áttetszőbb anyagnál (PETG, egyes fehérek) több kell: nyomtass próbát.",
   "nameTag.flushHint": "Minden szín egy sík felületen ér véget: arccal lefelé nyomtasd a tálcán. A legalsó réteg magassága az egész címke vastagsága; a fölötte lévő rétegek magasságát az intarzia mélysége adja.",
   "nameTag.corners": "Sarkok",
   "nameTag.corner.round": "Kerek",

@@ -3291,7 +3291,7 @@ export const MESSAGES_EN = {
   "nameTag.noHoles": "No holes",
   "nameTag.flush": "Flat inlay",
   "nameTag.flushDepth": "Inlay depth",
-  "nameTag.flushDepthHint": "How deep the colours above the bottom layer lie in it.",
+  "nameTag.flushDepthHint": "Recommended: 0.8 mm (four 0.2 mm layers) for PLA - there a dark colour usually no longer shows through a light one. A more translucent filament (PETG, some whites) needs more: print a test.",
   "nameTag.flushHint": "All colours end on one flat face: print it face down on the plate. The bottom layer's height is the thickness of the whole tag; the heights of the layers above it are set by the inlay depth.",
   "nameTag.corners": "Corners",
   "nameTag.corner.round": "Round",

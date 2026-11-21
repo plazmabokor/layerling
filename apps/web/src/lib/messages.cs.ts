@@ -3364,7 +3364,7 @@ export const MESSAGES_CS: Record<MessageKey, string> = {
   "nameTag.noHoles": "Bez otvorů",
   "nameTag.flush": "Plochá intarzie",
   "nameTag.flushDepth": "Hloubka intarzie",
-  "nameTag.flushDepthHint": "Jak hluboko leží barvy nad spodní vrstvou v ní.",
+  "nameTag.flushDepthHint": "Doporučeno: 0,8 mm (čtyři vrstvy po 0,2 mm) u PLA – tam tmavá barva obvykle už neprosvítá světlou. Průsvitnější filament (PETG, některé bílé) potřebuje víc: vytiskni zkoušku.",
   "nameTag.flushHint": "Všechny barvy končí v jedné rovné ploše: tiskni ji lícem dolů na podložku. Výška spodní vrstvy je tloušťka celé jmenovky; výšku vrstev nad ní dává hloubka intarzie.",
   "nameTag.corners": "Rohy",
   "nameTag.corner.round": "Zaoblené",

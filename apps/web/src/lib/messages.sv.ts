@@ -3362,7 +3362,7 @@ export const MESSAGES_SV: Partial<Record<MessageKey, string>> = {
   "nameTag.noHoles": "Inga hål",
   "nameTag.flush": "Plan inläggning",
   "nameTag.flushDepth": "Inläggningsdjup",
-  "nameTag.flushDepthHint": "Hur djupt färgerna ovanför det nedersta lagret ligger i det.",
+  "nameTag.flushDepthHint": "Rekommenderat: 0,8 mm (fyra lager à 0,2 mm) för PLA - då lyser en mörk färg oftast inte längre igenom en ljus. Ett mer genomskinligt filament (PETG, vissa vita) behöver mer: skriv ut ett test.",
   "nameTag.flushHint": "Alla färger slutar i en och samma plana yta: skriv ut den med den sidan nedåt mot plattan. Det nedersta lagrets höjd är hela skyltens tjocklek; höjden på lagren ovanför ges av inläggningsdjupet.",
   "nameTag.corners": "Hörn",
   "nameTag.corner.round": "Runda",

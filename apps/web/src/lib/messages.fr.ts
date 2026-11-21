@@ -3277,7 +3277,7 @@ export const MESSAGES_FR: Partial<Record<MessageKey, string>> = {
   "nameTag.noHoles": "Pas de trous",
   "nameTag.flush": "Marqueterie plane",
   "nameTag.flushDepth": "Profondeur de marqueterie",
-  "nameTag.flushDepthHint": "La profondeur à laquelle les couleurs au-dessus de la couche du bas y sont incrustées.",
+  "nameTag.flushDepthHint": "Conseillé : 0,8 mm (quatre couches de 0,2 mm) en PLA - une couleur foncée ne transparaît alors généralement plus sous une claire. Un filament plus translucide (PETG, certains blancs) demande plus : imprime un test.",
   "nameTag.flushHint": "Toutes les couleurs finissent sur une même face plane : imprime-la face contre le plateau. La hauteur de la couche du bas est l'épaisseur de toute l'étiquette ; la hauteur des couches au-dessus vient de la profondeur de marqueterie.",
   "nameTag.corners": "Coins",
   "nameTag.corner.round": "Rond",

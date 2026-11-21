@@ -5312,7 +5312,7 @@ export const MESSAGES_SL: Partial<Record<MessageKey, string>> = {
   "nameTag.noHoles": "Brez lukenj",
   "nameTag.flush": "Ploska intarzija",
   "nameTag.flushDepth": "Globina intarzije",
-  "nameTag.flushDepthHint": "Kako globoko ležijo barve nad spodnjo plastjo v njej.",
+  "nameTag.flushDepthHint": "Priporočeno: 0,8 mm (štiri plasti po 0,2 mm) pri PLA – takrat temna barva običajno ne presveti več skozi svetlo. Bolj prosojen filament (PETG, nekatere bele) potrebuje več: natisni preizkus.",
   "nameTag.flushHint": "Vse barve se končajo v eni ravni ploskvi: natisni jo z licem navzdol na podlago. Višina spodnje plasti je debelina celotne oznake; višino plasti nad njo določa globina intarzije.",
   "nameTag.corners": "Vogali",
   "nameTag.corner.round": "Zaobljeni",

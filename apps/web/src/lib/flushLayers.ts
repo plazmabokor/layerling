@@ -12,8 +12,12 @@ import type { FlushLayer, SketchStrokeJoin } from "@/types/layerling";
 export const MIN_FLUSH_DEPTH = 0.2;
 /** The deepest, in mm. */
 export const MAX_FLUSH_DEPTH = 5;
-/** How deep a tag is set in to begin with, in mm: three layers of 0.2 mm, enough that a light colour does not show the dark one under it. */
-export const DEFAULT_FLUSH_DEPTH = 0.6;
+/**
+ * How deep a tag is set in to begin with, in mm: four print layers of 0.2 mm. Most PLA no longer shows a dark colour
+ * through a light one there (about 0.9 mm is where the difference stops being visible); a more translucent filament
+ * (PETG, some whites) needs more, which the slider gives.
+ */
+export const DEFAULT_FLUSH_DEPTH = 0.8;
 /** How much of the bottom layer stays under the pocket at least, in mm: one print layer, so the tag stays one piece. */
 export const MIN_FLUSH_FLOOR = 0.2;
 

@@ -3290,7 +3290,7 @@ export const MESSAGES_DE: Record<MessageKey, string> = {
   "nameTag.noHoles": "Ohne Löcher",
   "nameTag.flush": "Flache Intarsie",
   "nameTag.flushDepth": "Intarsientiefe",
-  "nameTag.flushDepthHint": "Wie tief die Farben über der untersten Schicht in ihr liegen.",
+  "nameTag.flushDepthHint": "Empfohlen: 0,8 mm (vier Lagen zu 0,2 mm) bei PLA - dann scheint eine dunkle Farbe meist nicht mehr durch eine helle. Durchscheinenderes Filament (PETG, manche Weißtöne) braucht mehr: einen Test drucken.",
   "nameTag.flushHint": "Alle Farben enden in einer ebenen Fläche: mit dieser Seite nach unten auf die Platte drucken. Die Höhe der untersten Schicht ist die Dicke des ganzen Schilds; die Höhe der Schichten darüber gibt die Intarsientiefe.",
   "nameTag.corners": "Ecken",
   "nameTag.corner.round": "Rund",
