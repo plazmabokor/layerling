@@ -542,8 +542,9 @@ export function tapeShapeTopologyKey(shape: WorkplaneShape): string {
     textLetterWidth: shape.textLetterWidth,
     textKeyring: shape.textKeyring,
     textEdge: shape.textEdge,
+    textFlush: shape.textFlush,
     // A fill is built by the 2D kernel; until it has loaded the text is drawn plain (#215).
-    fillKernel: shape.textStroke || shape.textSilhouette || shape.textKeyring || shape.textEdge ? manifoldRevision() : undefined,
+    fillKernel: shape.textStroke || shape.textSilhouette || shape.textKeyring || shape.textEdge || shape.textFlush ? manifoldRevision() : undefined,
     textCurved: shape.textCurved,
     textRadius: shape.textRadius,
     textSize: shape.textSize,
@@ -998,8 +999,9 @@ export function shapeGeometrySignature(shape: WorkplaneShape): string {
     textLetterWidth: shape.textLetterWidth,
     textKeyring: shape.textKeyring,
     textEdge: shape.textEdge,
+    textFlush: shape.textFlush,
     // A fill is built by the 2D kernel; until it has loaded the text is drawn plain (#215).
-    fillKernel: shape.textStroke || shape.textSilhouette || shape.textKeyring || shape.textEdge ? manifoldRevision() : undefined,
+    fillKernel: shape.textStroke || shape.textSilhouette || shape.textKeyring || shape.textEdge || shape.textFlush ? manifoldRevision() : undefined,
     textCurved: shape.textCurved,
     textRadius: shape.textRadius,
     textSize: shape.textSize,
