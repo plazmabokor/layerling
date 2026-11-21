@@ -4630,7 +4630,8 @@ export function ShapeInspector({
   const singleColorPatch: Partial<WorkplaneShape> = canToggleGroupColors(shape) ? { multicolor: false } : {};
   // A group or bundle showing its parts in their own colours: the solid parts, each with its colour, to change it right
   // here (a cut group shows one mesh, so only groups whose parts stay apart). Up to a dozen, so the card stays short.
-  const partColors = !shape.hole && groupShowsPartColors(shape) && (shape.groupOperation === "bundle" || !shape.importedMesh)
+  // A name tag's or an icon tag's layers have their colours in the tag's own card (#215): not shown twice.
+  const partColors = !shape.hole && !shape.layeredText && !shape.layeredIcon && groupShowsPartColors(shape) && (shape.groupOperation === "bundle" || !shape.importedMesh)
     ? (shape.groupedShapes ?? [])
         .filter((part) => !part.hole && !isNonSolidShape(part))
         .slice(0, PART_COLOR_LIMIT + 1)
