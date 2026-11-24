@@ -5,11 +5,13 @@ import type { EnergyChainEnd, EnergyChainPrint, EnergyChainSettings, EnergyChain
  * no supports, whose links still come apart and go together again one by one like a bought one.
  *
  * Every link has a wide rear end - two outer plates with the holes - and a narrow front end - two inner
- * plates with the pins; the next link's outer plates hold this link's inner plates between them. Printed
- * on its side, the pins point up the way they are printed: the outer plate on the bed side carries its pin
- * up into the inner plate above it, the inner plate at the top carries its pin up into the outer plate
- * over it. Each pin is chamfered on the side the plate slides on from, so the outer plates spread over
- * them; they are free round the joint (`free`) so that they bend. Seen from the side a plate is a D, like
+ * plates with the pins, both pointing out; the next link's outer plates hold this link's inner plates
+ * between them, as on the bought chain. A pin goes right through the outer plate over it, its end flush with
+ * the plate's outer face: printed on its side, the lower pin stands on the bed in the hole of the plate
+ * around it and grows up into its inner plate, the upper one grows up from its inner plate. Each pin's end
+ * is chamfered all round (the first layer cannot spread onto the hole's wall) and more on the side the plate
+ * slides on from, so the outer plates spread over them; they are free round the joint (`free`) so that they
+ * bend. Seen from the side a plate is a D, like
  * the bought one's: round round its pin, its other end hollowed round the next link's round end, which
  * turns in it. The inner plates' front corners stay square (`heel` below, `lug` above) and turn in
  * grooves of the next link behind its outer plates: past straight the heel meets it, past the largest
@@ -102,9 +104,9 @@ export type EnergyChainSpec = {
   rh: number;
   pinD: number;
   pinPlay: number;
-  /** How far a pin reaches into the plate it holds, and its slide-on chamfer. */
-  engage: number;
+  /** The slide-on chamfer on one side of a pin's end, and the small one all round it. */
   chamfer: number;
+  tipChamfer: number;
   /** Radius round the rear pin inside which the outer plates are free to bend out. */
   free: number;
   /** How far the inner plates' square bottom (heel) and top (lug) front corners reach past the pin: always far enough to stand out of the next link's hollow (its round a play wider) and catch it. */
@@ -159,8 +161,8 @@ export function energyChainSpec(settings: EnergyChainSettings): EnergyChainSpec 
     Ro, rh,
     pinD: clamp(round1(0.55 * h), 3, 8),
     pinPlay: 0.3,
-    engage: 1.0,
     chamfer: 0.5,
+    tipChamfer: 0.3,
     // Never within a millimetre of the front hollow's back (a play wider than the round), where the two would all but touch.
     free: Math.abs(round1(0.7 * H) - (P - Ro - play)) < 1 ? Math.floor((P - Ro - play - 1) * 10) / 10 : round1(0.7 * H),
     // The measured chain's corners, larger where the play would let them slip past the hollow they turn in.

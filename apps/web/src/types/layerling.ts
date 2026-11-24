@@ -2044,7 +2044,7 @@ export type EnergyChainSettings = {
   lengthCm: number;
   /** The play between the parts printed in place, in mm (0.2 to 0.8). */
   play: number;
-  /** The fixed end piece before the first link and the moving one after the last. */
+  /** The pin end piece before the first link and the hole end piece after the last. */
   start: EnergyChainEnd;
   end: EnergyChainEnd;
   /** "pieces": `pieces` links, each on its own, in rows; the ends then come apart too (never "attached"). Unset: the spiral. */

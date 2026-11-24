@@ -69,12 +69,16 @@ function buildPiece(cad: OcctKernel, part: CadModifierEnergyChainPart): ShapeHan
     if (solid) solids.push(cad.translate(solid, 0, layer.y0, 0));
   }
   for (const pin of part.pins) {
-    // An upright cylinder (z up turned to y up), cut on one side of its top by the chamfer's plane.
+    // Made with its free end at the top (z up turned to y up): a cylinder and the cone of the chamfer all round its
+    // end, cut on one side of the end by the slide-on chamfer's plane; turned end down about x if its end is below.
     const height = pin.y1 - pin.y0;
-    const cylinder = cad.rotate(cad.makeCylinder(pin.radius, height), { point: { x: 0, y: 0, z: 0 }, direction: { x: 1, y: 0, z: 0 } }, -Math.PI / 2);
-    const placed = cad.translate(cylinder, pin.x, pin.y0, 0);
-    const plane = { x: pin.x + pin.chamferSide * (pin.radius - pin.chamfer), y: pin.y1, z: 0 };
-    solids.push(cad.cut(placed, cad.halfSpace(plane, { x: pin.chamferSide, y: 1, z: 0 })));
+    const t = pin.tipChamfer;
+    const upright = (shape: ShapeHandle) => cad.rotate(shape, { point: { x: 0, y: 0, z: 0 }, direction: { x: 1, y: 0, z: 0 } }, -Math.PI / 2);
+    const body = cad.fuse(upright(cad.makeCylinder(pin.radius, height - t)), cad.translate(upright(cad.makeCone(pin.radius, pin.radius - t, t)), 0, height - t, 0));
+    const plane = { x: pin.chamferSide * (pin.radius - pin.chamfer), y: height, z: 0 };
+    let shaped = cad.unifySameDomain(cad.cut(body, cad.halfSpace(plane, { x: pin.chamferSide, y: 1, z: 0 })));
+    if (pin.tip < 0) shaped = cad.rotate(shaped, { point: { x: 0, y: height / 2, z: 0 }, direction: { x: 1, y: 0, z: 0 } }, Math.PI);
+    solids.push(cad.translate(shaped, pin.x, pin.y0, 0));
   }
   let body = solids.length === 1 ? solids[0] : cad.fuseAll(solids);
   if (part.tongue) {

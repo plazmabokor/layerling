@@ -86,9 +86,10 @@ describe("energy chain as exact bodies", () => {
         expect(cad.isValid(body)).toBe(true);
         expect(cad.getSubShapes(body, "solid")).toHaveLength(1);
         const edges = cad.getSubShapes(body, "edge");
-        // Where two edges meet they meet at a point worked out exactly: none is a sliver left between them.
+        // Where two edges meet they meet at a point worked out exactly: none is a sliver left between them. All are
+        // true conics: lines, arcs, the slide-on chamfer's ellipses on a pin and its parabolas on the tip's cone.
         expect(Math.min(...edges.map((edge) => cad.curveLength(edge)))).toBeGreaterThanOrEqual(0.2 - 1e-6);
-        expect(edges.every((edge) => ["line", "circle", "ellipse"].includes(cad.curveType(edge)))).toBe(true);
+        expect(edges.every((edge) => ["line", "circle", "ellipse", "parabola"].includes(cad.curveType(edge)))).toBe(true);
       }
       const link = energyChainPartSolid(cad, { key: `${name}-link`, ...pieces.exact.link });
       const next = (degrees: number) => cad.translate(cad.rotate(link, { point: { x: 0, y: 0, z: 0 }, direction: { x: 0, y: 1, z: 0 } }, (degrees * Math.PI) / 180), spec.P, 0, 0);
@@ -112,7 +113,8 @@ describe("energy chain as exact bodies", () => {
     // The edge tools work on it: the outer plate's edges on the bed rounded off at once.
     const onBed = cad.getSubShapes(link, "edge").filter((edge) => {
       const box = cad.getBoundingBox(edge);
-      return Math.abs(box.ymin) < 1e-6 && Math.abs(box.ymax) < 1e-6;
+      // The outer plate's, not the lower pin's end standing on the bed beside it.
+      return Math.abs(box.ymin) < 1e-6 && Math.abs(box.ymax) < 1e-6 && Math.hypot(Math.max(box.xmin - spec.P, spec.P - box.xmax, 0), Math.max(box.zmin, -box.zmax, 0)) > spec.pinD;
     });
     expect(onBed.length).toBeGreaterThan(4);
     const rounded = cad.fillet(link, onBed, 0.5);

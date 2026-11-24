@@ -80,12 +80,27 @@ describe("energy chain geometry", () => {
     }, 120000);
   }
 
+  it("pins like the bought chain: both at the front joint pointing out, through the next link's outer plates to their outer faces", async () => {
+    const spec = energyChainSpec(settings({}));
+    const link = solid((await energyChainPieces(runtime, spec)).link);
+    const at = (z: number) => link.slice(z);
+    // Round the front joint (P, 0) the outer faces hold the pins' ends, nothing round the rear one (the holes).
+    const near = (section: ReturnType<typeof at>, x: number) => section.intersect(runtime.CrossSection.circle(spec.pinD / 2 + 0.2, 64).translate([x, 0])).area();
+    for (const z of [0.05, spec.W - 0.05]) {
+      expect(near(at(z), spec.P)).toBeGreaterThan(0.5 * Math.PI * (spec.pinD / 2 - spec.tipChamfer) ** 2);
+      expect(near(at(z), 0)).toBeLessThan(1e-6);
+    }
+    // The lower pin stands on the bed: its end is on the plate, inside the next link's hole with room all round.
+    expect(link.boundingBox().min[2]).toBeCloseTo(0, 6);
+  }, 120000);
+
   it("takes apart: the outer plates spread over the pins and the link slides off forward", async () => {
     const spec = energyChainSpec(settings({}));
     const link = solid((await energyChainPieces(runtime, spec)).link);
     const theta = 20;
     const next = link.rotate([0, 0, theta]).translate([spec.P, 0, 0]);
-    const spread = spec.engage + 0.15;
+    // The pins go right through the outer plates: they spread by a plate's thickness and a little.
+    const spread = spec.T + 0.15;
     const bottom = next.trimByPlane([0, 0, -1], -(spec.z.S0[1] + 0.001)).translate([0, 0, -spread]);
     const top = next.trimByPlane([0, 0, 1], spec.z.S6[0] - 0.001).translate([0, 0, spread]);
     for (const d of [0, 3, 8]) {
@@ -114,7 +129,7 @@ describe("energy chain geometry", () => {
       const next = (theta: number) => link.rotate([0, 0, theta]).translate([spec.P, 0, 0]);
       for (let theta = spec.th0; theta <= spec.th1 + 1e-9; theta += 1) {
         expect(link.intersect(next(theta)).volume()).toBeLessThan(1e-3);
-        // The last link into the moving end piece, the first one out of the fixed one.
+        // The last link into the hole end piece, the first one off the pin end piece.
         expect(end.intersect(link.translate([-spec.P, 0, 0]).rotate([0, 0, -theta])).volume()).toBeLessThan(1e-3);
         expect(start.intersect(link.rotate([0, 0, theta])).volume()).toBeLessThan(1e-3);
       }

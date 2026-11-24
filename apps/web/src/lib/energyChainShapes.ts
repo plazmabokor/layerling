@@ -3,7 +3,8 @@ import type { ChainSlab, EnergyChainSpec } from "@/lib/energyChain";
 
 /*
  * The energy chain's pieces as exact flat figures, slab by slab (lib/energyChain.ts names the slabs), in the print
- * frame: x along the chain, y across its height; a link's rear pin at O = (0, 0), its front pin at Q = (P, 0).
+ * frame: x along the chain, y across its height; a link's rear joint (its holes) at O = (0, 0), its front joint (its
+ * pins) at Q = (P, 0).
  *
  * Every figure is made of exact parts, each worked out from what moves past it:
  * - The outer plates (S0, S6) are a D: round round the rear pin, straight above and below. In front they are hollowed
@@ -133,8 +134,8 @@ export function movedFigure(figure: ChainFigure, dx: number): ChainFigure {
 }
 
 /**
- * The figures of a piece, slab by slab: a link (`rear` and `front`), the fixed end piece (`front` only: it holds the
- * first link, its body closed behind) or the moving end piece (`rear` only). Every edge is a true line or arc, and
+ * The figures of a piece, slab by slab: a link (`rear` and `front`), the pin end piece (`front` only: its pins hold the
+ * first link, its body closed behind) or the hole end piece (`rear` only). Every edge is a true line or arc, and
  * where two meet they meet exactly (a tangent point, a corner both pass through), so no hairline edges are left.
  */
 export function chainPieceFigures(spec: EnergyChainSpec, rear: boolean, front: boolean): ChainPieceFigures {
@@ -222,7 +223,7 @@ export function chainPieceFigures(spec: EnergyChainSpec, rear: boolean, front: b
     ];
   };
   const channel = box(-4 * Ro, P + 4 * Ro, -spec.h / 2, spec.h / 2);
-  const inner = (e: number) => cut(innerOutline(e), ...behind(e), ...(front ? [circle(P, 0, spec.pinD / 2 + spec.pinPlay + e)] : []));
+  const inner = (e: number) => cut(innerOutline(e), ...behind(e));
   // The top inner plate ends just past its posts (further out it would hang over the channel), with a ring round its pin.
   const xPost = Math.sqrt(Math.max(Ro * Ro - (spec.h * spec.h) / 4, 0));
   const top = (e: number) => {
@@ -235,12 +236,12 @@ export function chainPieceFigures(spec: EnergyChainSpec, rear: boolean, front: b
     ];
     return cut(union(common(innerOutline(e), box(-4 * Ro, P + end, -2 * Ro, 2 * Ro)), ...corners, circle(P, 0, spec.pinD / 2 + spec.pinPlay + 1.5 - e)), ...behind(e));
   };
-  const S0 = outer(false);
+  const S0 = outer(true);
   const S6 = outer(true);
   const S2 = inner(0);
   const S4 = top(0);
   const S3 = cut(innerOutline(0), channel, ...behind(0));
-  // On the moving end piece the clear round stays well inside its square front (never touching that edge).
+  // On the hole end piece the clear round stays well inside its square front (never touching that edge).
   const free = rear ? [circle(0, 0, front ? spec.free : Math.min(spec.free, x1 - 1.5))] : [];
   // The thin layers join a plate to the one beside it, exactly where both are.
   const S1 = cut(common(S0, S2), ...free);

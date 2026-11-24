@@ -380,14 +380,15 @@ export type ChainFigure =
 /**
  * A piece of an energy chain (a link or an end piece) as an exact body. Built in the piece's own frame - the
  * chain's print frame turned y up: x along the chain, y across its width (the print frame's z, the bed at 0), z the
- * print frame's -y - from its layers, each a figure pushed up from `y0` to `y1`; its pins, upright cylinders cut by
- * the 45 degree plane of their slide-on chamfer; and an end piece's tongue with two countersunk screw holes.
+ * print frame's -y - from its layers, each a figure pushed up from `y0` to `y1`; its pins, upright cylinders whose
+ * free end (`tip`: +1 at y1, -1 at y0) is chamfered all round by `tipChamfer` and cut by the 45 degree plane of
+ * their slide-on chamfer; and an end piece's tongue with two countersunk screw holes.
  * `key` names the piece's build: the same key is the same body. `transform` places it.
  */
 export type CadModifierEnergyChainPart = {
   key: string;
   layers: Array<{ y0: number; y1: number; figure: ChainFigure }>;
-  pins: Array<{ x: number; radius: number; y0: number; y1: number; chamferSide: 1 | -1; chamfer: number }>;
+  pins: Array<{ x: number; radius: number; y0: number; y1: number; tip: 1 | -1; chamferSide: 1 | -1; chamfer: number; tipChamfer: number }>;
   tongue?: { x0: number; x1: number; z0: number; z1: number; width: number; holes: number[]; hole: number; head: number };
   transform?: number[];
   expected?: { bounds: number[]; volume: number };
