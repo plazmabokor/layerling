@@ -234,6 +234,8 @@ async function callTool(name, args) {
       return bridgeCommand("create_sbc_board", args, 60000);
     case "layerling_create_fan":
       return bridgeCommand("create_fan", args, 60000);
+    case "layerling_create_energy_chain":
+      return bridgeCommand("create_energy_chain", args, 120000);
     case "layerling_measure_section":
       return bridgeCommand("measure_section", args, 30000);
     case "layerling_show_overhangs":

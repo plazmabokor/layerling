@@ -224,7 +224,9 @@ import { FONT_MANAGER_OPTION, requestFontManager } from "@/lib/fontManagerEvents
 import { FontPicker } from "@/components/workplane/FontPicker";
 import { SurfacePatternPicker } from "@/components/workplane/SurfacePatternPicker";
 import { QR_BYTE_CAPACITY, qrByteLength, qrTextFits, type QrCodeSettings } from "@/lib/qrCode";
+import { ENERGY_CHAIN_ENDS, ENERGY_CHAIN_SIZES, energyChainLinks, energyChainSpec, MAX_CHAIN_INNER_HEIGHT, MAX_CHAIN_INNER_WIDTH, MAX_CHAIN_LENGTH_CM, MAX_CHAIN_PLAY, MIN_CHAIN_INNER_HEIGHT, MIN_CHAIN_INNER_WIDTH, MIN_CHAIN_LENGTH_CM, MIN_CHAIN_PLAY, normalizeEnergyChain } from "@/lib/energyChain";
 import { FAN_LABEL_KEYS, FAN_ORDER, FANS, MAX_FAN_CLEARANCE, MAX_FAN_REACH, normalizeFanSettings, type FanSettings, type FanType } from "@/lib/fans";
+import type { EnergyChainEnd, EnergyChainSettings, EnergyChainSize } from "@/types/layerling";
 import { PATTIES_MIN_HEIGHT, pattiesBaseThickness, pattiesPlanOfShape, pattiesSettingsOfShape } from "@/lib/pattiesGeometry";
 import { PattiesMotifLoader } from "@/components/workplane/PattiesMotifLoader";
 import {
@@ -4872,6 +4874,7 @@ export function ShapeInspector({
   qrCode,
   sbcBoard,
   fan,
+  energyChain,
   referenceImage,
   onInteractionActiveChange,
   onSnapGridAwayChange,
@@ -4955,6 +4958,8 @@ export function ShapeInspector({
   sbcBoard?: SbcBoardControls | null;
   /** The fan card's wiring (Discussion #1962), for a fan; null for anything else. */
   fan?: FanControls | null;
+  /** The energy chain card's wiring, for an energy chain; null for anything else. */
+  energyChain?: EnergyChainControls | null;
   /** The reference image card's wiring (#680), for a reference image; null for anything else. */
   referenceImage?: ReferenceImageControls | null;
   onInteractionActiveChange?: (active: boolean) => void;
@@ -5507,6 +5512,7 @@ export function ShapeInspector({
       {shape.kind === "text" && onLayerText ? <MakeLayersButton disabled={frozen} onLayerText={onLayerText} /> : null}
       {qrCode ? <QrCodeCard key={`qr-code-${shape.id}`} shapeId={shape.id} controls={qrCode} disabled={frozen} /> : null}
       {fan ? <FanCard key={`fan-${shape.id}`} shapeId={shape.id} controls={fan} workspace={workspace} disabled={frozen} onInteractionActiveChange={onInteractionActiveChange} /> : null}
+      {energyChain ? <EnergyChainCard key={`energy-chain-${shape.id}`} shapeId={shape.id} controls={energyChain} workspace={workspace} disabled={frozen} onInteractionActiveChange={onInteractionActiveChange} /> : null}
       {sbcBoard ? <SbcBoardCard key={`sbc-board-${shape.id}`} shapeId={shape.id} controls={sbcBoard} workspace={workspace} disabled={frozen} onInteractionActiveChange={onInteractionActiveChange} /> : null}
       {referenceImage ? <ReferenceImageCard key={`reference-image-${shape.id}`} shapeId={shape.id} controls={referenceImage} workspace={workspace} locked={frozen} onInteractionActiveChange={onInteractionActiveChange} /> : null}
       {iconTag?.isTag ? (
@@ -7061,6 +7067,149 @@ function SbcBoardCard({ shapeId, controls, workspace, disabled, onInteractionAct
 }
 
 /** The fan card's wiring (Discussion #1962): the fan, clearance and reaches it was made with, and making it again with others. */
+export type EnergyChainControls = {
+  settings: EnergyChainSettings;
+  /** The spiral's box on the plate and the build plate's, in mm: a chain bigger than the plate says so. */
+  footprint: { width: number; depth: number };
+  plate: { width: number; depth: number };
+  onRegenerate: (settings: EnergyChainSettings) => Promise<void>;
+};
+
+const ENERGY_CHAIN_END_LABELS: Record<EnergyChainEnd, MessageKey> = {
+  none: "energyChain.endNone",
+  attached: "energyChain.endAttached",
+  separate: "energyChain.endSeparate",
+};
+
+/**
+ * The energy chain card, open and first: the size (a standard one or one's own inside), the length in
+ * cm, the play and the two end pieces. Any change makes the chain again where it lies; a change made
+ * while one is being made waits for it and goes next, so the last value of a slider is never lost.
+ */
+function EnergyChainCard({ shapeId, controls, workspace, disabled, onInteractionActiveChange }: {
+  shapeId: string;
+  controls: EnergyChainControls;
+  workspace: WorkplaneWorkspaceSettings;
+  disabled: boolean;
+  onInteractionActiveChange?: (active: boolean) => void;
+}) {
+  const [open, setOpen] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const pending = useRef<EnergyChainSettings | null>(null);
+  const latest = useRef(controls.settings);
+  latest.current = controls.settings;
+  const run = (next: EnergyChainSettings) => {
+    setBusy(true);
+    setError("");
+    controls.onRegenerate(next)
+      .catch((reason) => setError(reason instanceof Error ? localizedError(reason.message) : String(reason)))
+      .finally(() => {
+        const queued = pending.current;
+        pending.current = null;
+        if (queued) run(queued);
+        else setBusy(false);
+      });
+  };
+  const regenerate = (patch: Partial<EnergyChainSettings>) => {
+    const base = pending.current ?? latest.current;
+    const next = normalizeEnergyChain({ ...base, ...patch });
+    if (disabled || !next || JSON.stringify(next) === JSON.stringify(normalizeEnergyChain(base))) return;
+    if (busy) {
+      pending.current = next;
+      return;
+    }
+    run(next);
+  };
+  const settings = controls.settings;
+  const spec = energyChainSpec(settings);
+  const { count, length } = energyChainLinks(settings);
+  const unit = lengthDisplayUnit(workspace).label;
+  const tooBig = controls.footprint.width > controls.plate.width || controls.footprint.depth > controls.plate.depth;
+  const custom = settings.size === "custom";
+  return (
+    <div className={`property-card name-tag-card energy-chain-card ${open ? "" : "collapsed"}`}>
+      <button className="property-card-header" type="button" aria-expanded={open} aria-controls={`energy-chain-${shapeId}`} onClick={() => setOpen((current) => !current)}>
+        <span>{t("energyChain.title")}</span>
+        <ChevronUp className={open ? "" : "collapsed"} size={25} strokeWidth={2.8} />
+      </button>
+      {open ? <p className="name-tag-hint">{t("energyChain.cardHint")}</p> : null}
+      {open ? (
+        <div className="property-list name-tag-body" id={`energy-chain-${shapeId}`} data-testid="energy-chain-card">
+          <SelectProperty
+            type="select"
+            label={t("energyChain.size")}
+            value={settings.size}
+            options={[...ENERGY_CHAIN_SIZES.map((size) => ({ value: size, label: size.replace("x", " × ") })), { value: "custom", label: t("energyChain.custom") }]}
+            disabled={disabled}
+            onChange={(value) => regenerate(value === "custom" ? { size: "custom", innerHeight: spec.h, innerWidth: spec.w } : { size: value as EnergyChainSize })}
+          />
+          {custom ? (
+            <>
+              <label className="select-property energy-chain-inner-height">
+                <span>{t("energyChain.innerHeight")} ({unit})</span>
+                <CompactMeasureField label={t("energyChain.innerHeight")} value={spec.h} min={MIN_CHAIN_INNER_HEIGHT} max={MAX_CHAIN_INNER_HEIGHT} workspace={workspace} disabled={disabled} onChange={(innerHeight) => regenerate({ innerHeight })} onInteractionActiveChange={onInteractionActiveChange} />
+              </label>
+              <label className="select-property energy-chain-inner-width">
+                <span>{t("energyChain.innerWidth")} ({unit})</span>
+                <CompactMeasureField label={t("energyChain.innerWidth")} value={spec.w} min={MIN_CHAIN_INNER_WIDTH} max={MAX_CHAIN_INNER_WIDTH} workspace={workspace} disabled={disabled} onChange={(innerWidth) => regenerate({ innerWidth })} onInteractionActiveChange={onInteractionActiveChange} />
+              </label>
+              <p className="name-tag-hint">{t("energyChain.customHint")}</p>
+            </>
+          ) : null}
+          <RangeProperty
+            id="energyChainLengthCm"
+            label={t("energyChain.length")}
+            value={settings.lengthCm}
+            min={MIN_CHAIN_LENGTH_CM}
+            max={MAX_CHAIN_LENGTH_CM}
+            step={0.5}
+            workspace={workspace}
+            disabled={disabled}
+            onChange={(lengthCm) => regenerate({ lengthCm })}
+            onInteractionActiveChange={onInteractionActiveChange}
+          />
+          <label className="select-property energy-chain-play">
+            <span>{t("energyChain.play")} ({unit})</span>
+            <CompactMeasureField label={t("energyChain.play")} value={settings.play} min={MIN_CHAIN_PLAY} max={MAX_CHAIN_PLAY} workspace={workspace} disabled={disabled} onChange={(play) => regenerate({ play })} onInteractionActiveChange={onInteractionActiveChange} />
+          </label>
+          <p className="name-tag-hint">{t("energyChain.playHint")}</p>
+          <SelectProperty
+            type="select"
+            label={t("energyChain.start")}
+            value={settings.start}
+            options={ENERGY_CHAIN_ENDS.map((end) => ({ value: end, label: t(ENERGY_CHAIN_END_LABELS[end]) }))}
+            disabled={disabled}
+            onChange={(value) => regenerate({ start: value as EnergyChainEnd })}
+          />
+          <SelectProperty
+            type="select"
+            label={t("energyChain.end")}
+            value={settings.end}
+            options={ENERGY_CHAIN_ENDS.map((end) => ({ value: end, label: t(ENERGY_CHAIN_END_LABELS[end]) }))}
+            disabled={disabled}
+            onChange={(value) => regenerate({ end: value as EnergyChainEnd })}
+          />
+          <p className="name-tag-hint" data-testid="energy-chain-summary">
+            {busy ? t("energyChain.building") : t("energyChain.summary", {
+              count,
+              length: Number((length / 10).toFixed(1)),
+              radius: Number(spec.bendRadius.toFixed(1)),
+              outer: `${Number(spec.H.toFixed(1))} × ${Number(spec.W.toFixed(1))}`,
+            })}
+          </p>
+          {tooBig && !busy ? (
+            <p className="name-tag-hint icon-tag-card-error" role="alert">
+              {t("energyChain.tooBig", { width: Math.round(controls.footprint.width), depth: Math.round(controls.footprint.depth), plateWidth: Math.round(controls.plate.width), plateDepth: Math.round(controls.plate.depth) })}
+            </p>
+          ) : null}
+          {error ? <p className="name-tag-hint icon-tag-card-error" role="alert">{error}</p> : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export type FanControls = {
   settings: FanSettings;
   onRegenerate: (settings: FanSettings) => Promise<void>;

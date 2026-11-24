@@ -56,7 +56,10 @@ import { QrCodePanel } from "@/components/workplane/QrCodePanel";
 import { qrCodeOf, qrCodeShape, regeneratedQrCodeShape } from "@/lib/editorQrCode";
 import { regeneratedSbcBoardShape, sbcBoardOf, sbcBoardShape } from "@/lib/editorSbcBoard";
 import { fanOf, fanShape, regeneratedFanShape } from "@/lib/editorFan";
+import { energyChainOf, energyChainShape, regeneratedEnergyChainShape } from "@/lib/editorEnergyChain";
+import { DEFAULT_ENERGY_CHAIN, ENERGY_CHAIN_ENDS, ENERGY_CHAIN_SIZES, energyChainLinks, energyChainSpec, MAX_CHAIN_INNER_HEIGHT, MAX_CHAIN_INNER_WIDTH, MAX_CHAIN_LENGTH_CM, MAX_CHAIN_PLAY, MIN_CHAIN_INNER_HEIGHT, MIN_CHAIN_INNER_WIDTH, MIN_CHAIN_LENGTH_CM, MIN_CHAIN_PLAY, normalizeEnergyChain } from "@/lib/energyChain";
 import { DEFAULT_FAN, FAN_ORDER, MAX_FAN_CLEARANCE, MAX_FAN_REACH, type FanSettings, type FanType } from "@/lib/fans";
+import type { EnergyChainSettings } from "@/types/layerling";
 import { portWithScrewHolesGroup } from "@/lib/editorPortScrewHoles";
 import { DEFAULT_SBC_BOARD, MAX_SBC_BUTTON_REACH, MAX_SBC_CLEARANCE, MAX_SBC_REACH, MAX_SBC_UP_REACH, MIN_SBC_UP_REACH, SBC_BOARD_ORDER, type SbcBoardSettings, type SbcBoardType } from "@/lib/sbcBoards";
 import { DEFAULT_QR_WIDTH, MAX_QR_HEIGHT, MAX_QR_WIDTH, MIN_QR_HEIGHT, MIN_QR_WIDTH, QR_BYTE_CAPACITY, QR_ERROR_CORRECTIONS, QR_STYLES, normalizeQrSettings, qrByteLength, qrMatrix, qrModuleSize, qrModuleTooSmall, qrTextFits, type QrCodeSettings, type QrErrorCorrection, type QrStyle } from "@/lib/qrCode";
@@ -234,7 +237,7 @@ import { addFileBackup, allowBackupFolder, allowBackupFolderForSave, fileBackups
 import { backupFileBeforeOverwrite, takeEditorBackupReminder } from "@/components/workplane/fileBackupEditor";
 import { copyNamePatterns, shapeNamesIn, withCopyName } from "@/lib/shapeCopyName";
 import { nameForNewGroup } from "@/lib/groupName";
-import { clipboardShape, displayShapeName, hasOwnShapeName, iconTagAsset, qrCodeAsset, makeShapeFromAsset, nameTagAsset, libraryAssetCustomization, libraryAssetTurnX, roofAsset, sbcBoardAsset, fanAsset, shapeAssetLabel, toolbarShapeAssets } from "@/lib/shapeCatalog";
+import { clipboardShape, displayShapeName, hasOwnShapeName, iconTagAsset, qrCodeAsset, makeShapeFromAsset, nameTagAsset, libraryAssetCustomization, libraryAssetTurnX, roofAsset, sbcBoardAsset, fanAsset, energyChainAsset, shapeAssetLabel, toolbarShapeAssets } from "@/lib/shapeCatalog";
 import { storeRecentShape } from "@/lib/shapeLibrarySections";
 import { PORT_PRESET_ORDER, PORT_PRESETS, portPresetSize, type PortPreset } from "@/lib/portGeometry";
 import { WASHER_SIZE_ORDER, isWasherSize, washerTubeFields } from "@/lib/washerSizes";
@@ -3654,6 +3657,7 @@ export function LayerlingEditor({
   const placeSbcBoardRef = useRef<((point?: PlacementPoint, onFace?: PlacementWorkplane) => Promise<void>) | null>(null);
   /** Builds a fan from the library (Discussion #1962), as the SBC board is built. */
   const placeFanRef = useRef<((point?: PlacementPoint, onFace?: PlacementWorkplane) => Promise<void>) | null>(null);
+  const placeEnergyChainRef = useRef<((point?: PlacementPoint) => Promise<void>) | null>(null);
   const notesRef = useRef(notes);
   const projectAssetsRef = useRef(projectAssets);
   const projectAttachmentsRef = useRef(projectAttachments);
@@ -4374,7 +4378,7 @@ export function LayerlingEditor({
   // click: the one taken up last wins and puts the other one down.
   const startCruise = useCallback((asset: ShapeAsset) => {
     // The icon tag, the QR code and the SBC board are not carried, so this is where they are put in (#1170).
-    if (asset.id === iconTagAsset.id || asset.id === qrCodeAsset.id || asset.id === sbcBoardAsset.id || asset.id === fanAsset.id) storeRecentShape(asset.id);
+    if (asset.id === iconTagAsset.id || asset.id === qrCodeAsset.id || asset.id === sbcBoardAsset.id || asset.id === fanAsset.id || asset.id === energyChainAsset.id) storeRecentShape(asset.id);
     // The icon tag has no shape to carry: it starts from an SVG file, in its own window.
     if (asset.id === iconTagAsset.id) {
       setQrCodePanelOpen(false);
@@ -4395,6 +4399,11 @@ export function LayerlingEditor({
     // The fan (Discussion #1962) too.
     if (asset.id === fanAsset.id) {
       void placeFanRef.current?.();
+      return;
+    }
+    // The energy chain is built too, lying on the plate as it is printed.
+    if (asset.id === energyChainAsset.id) {
+      void placeEnergyChainRef.current?.();
       return;
     }
     closeSplit();
@@ -6982,6 +6991,10 @@ export function LayerlingEditor({
       }
       if (asset.id === fanAsset.id) {
         void placeFanRef.current?.(point, onFace);
+        return;
+      }
+      if (asset.id === energyChainAsset.id) {
+        void placeEnergyChainRef.current?.(onFace ? undefined : point);
         return;
       }
       // The saved defaults of the kind, and where they say nothing, the printer's play (printerPlay.ts).
@@ -14803,6 +14816,23 @@ export function LayerlingEditor({
   placeFanRef.current = placeFan;
 
   /**
+   * The energy chain from the library: the default chain, its links lying in the spiral they are printed
+   * in, on the plate new shapes land on (never on a face: it is printed as it lies), selected.
+   */
+  const placeEnergyChain = useCallback(async (point?: PlacementPoint) => {
+    setNotice(t("energyChain.building"), true);
+    try {
+      const built = await energyChainShape(DEFAULT_ENERGY_CHAIN);
+      const base = horizontalPlacementWorkplane();
+      const shape = canonicalizeShape({ ...built, ...placementPatchForNewShape(built, base, point ?? buildPlates.newShapeOrigin(base)) });
+      commitShapes([...shapesRef.current, shape], [shape.id], t("status.energyChainAdded", { name: shape.name }));
+    } catch (error) {
+      setNotice(error instanceof Error ? localizedError(error.message) : t("energyChain.failed"), true);
+    }
+  }, [buildPlates, commitShapes, setNotice]);
+  placeEnergyChainRef.current = placeEnergyChain;
+
+  /**
    * The fit test (fitTest.ts) that measures the printer's play: on the plate new shapes land on, in front of what stands
    * there already when its middle is taken, selected. The settings window's button and the MCP tool place it; it returns
    * the new bundle, or why it could not be made, as the notice says it.
@@ -14855,6 +14885,29 @@ export function LayerlingEditor({
     }
     commitShapes(shapesRef.current.map((shape) => (shape.id === current.id ? next : shape)), [next.id], t("status.fanRegenerated", { name: next.name }));
   }, [commitShapes, selectedShape, selectedShapes.length]);
+
+  /** The energy chain card: another size, length, play or ends, made again where the selected chain lies. */
+  const regenerateSelectedEnergyChain = useCallback(async (settings: EnergyChainSettings) => {
+    const current = selectedShapes.length === 1 ? selectedShape : null;
+    if (!current || !energyChainOf(current)) return;
+    const sourceFingerprint = projectShapesFingerprint([current]);
+    const sourceProjectId = projectInfoRef.current.projectId;
+    setNotice(t("energyChain.building"), true);
+    const next = await regeneratedEnergyChainShape(current, settings);
+    const currentTarget = shapesRef.current.find((shape) => shape.id === current.id);
+    if (projectInfoRef.current.projectId !== sourceProjectId || !currentTarget || projectShapesFingerprint([currentTarget]) !== sourceFingerprint) {
+      setNotice(t("status.energyChainChanged"));
+      return;
+    }
+    commitShapes(shapesRef.current.map((shape) => (shape.id === current.id ? next : shape)), [next.id], t("status.energyChainRegenerated", { name: next.name }));
+  }, [commitShapes, selectedShape, selectedShapes.length, setNotice]);
+
+  const energyChainControls = useMemo(() => {
+    const settings = selectedShapes.length === 1 && !bodyLocked(selectedShape) ? energyChainOf(selectedShape) : null;
+    return settings && selectedShape
+      ? { settings, footprint: { width: selectedShape.width, depth: selectedShape.depth }, plate: { width: workspaceSettings.width, depth: workspaceSettings.depth }, onRegenerate: regenerateSelectedEnergyChain }
+      : null;
+  }, [regenerateSelectedEnergyChain, selectedShape, selectedShapes.length, workspaceSettings.depth, workspaceSettings.width]);
 
   const fanControls = useMemo(() => {
     const settings = selectedShapes.length === 1 && !bodyLocked(selectedShape) ? fanOf(selectedShape) : null;
@@ -17331,6 +17384,45 @@ export function LayerlingEditor({
         });
         commitShapes([...currentShapes(), shape], shape.id, t("status.fanAdded", { name: shape.name }));
         return { object: mcpShapeSummary(shape) };
+      }
+
+      if (command.action === "create_energy_chain") {
+        const sizes = [...ENERGY_CHAIN_SIZES, "custom"];
+        if (params.size !== undefined && !sizes.includes(params.size as never)) throw new Error(`size must be one of ${sizes.join(", ")}`);
+        const numberIn = (key: string, min: number, max: number) => {
+          const value = params[key];
+          if (value === undefined) return undefined;
+          if (typeof value !== "number" || !Number.isFinite(value) || value < min || value > max) throw new Error(`${key} must be ${min} to ${max}`);
+          return value;
+        };
+        const ends = ENERGY_CHAIN_ENDS as readonly string[];
+        for (const key of ["start", "end"] as const) {
+          if (params[key] !== undefined && !ends.includes(params[key] as string)) throw new Error(`${key} must be one of ${ends.join(", ")}`);
+        }
+        for (const axis of ["x", "z"] as const) {
+          if (params[axis] !== undefined && (typeof params[axis] !== "number" || !Number.isFinite(params[axis]))) throw new Error(`${axis} must be a number`);
+        }
+        const settings = normalizeEnergyChain({
+          ...DEFAULT_ENERGY_CHAIN,
+          ...(params.size !== undefined ? { size: params.size as EnergyChainSettings["size"] } : {}),
+          innerHeight: numberIn("innerHeight", MIN_CHAIN_INNER_HEIGHT, MAX_CHAIN_INNER_HEIGHT),
+          innerWidth: numberIn("innerWidth", MIN_CHAIN_INNER_WIDTH, MAX_CHAIN_INNER_WIDTH),
+          lengthCm: numberIn("lengthCm", MIN_CHAIN_LENGTH_CM, MAX_CHAIN_LENGTH_CM) ?? DEFAULT_ENERGY_CHAIN.lengthCm,
+          play: numberIn("play", MIN_CHAIN_PLAY, MAX_CHAIN_PLAY) ?? DEFAULT_ENERGY_CHAIN.play,
+          ...(params.start !== undefined ? { start: params.start as EnergyChainSettings["start"] } : {}),
+          ...(params.end !== undefined ? { end: params.end as EnergyChainSettings["end"] } : {}),
+        })!;
+        const built = await energyChainShape(settings);
+        const shape = canonicalizeShape({
+          ...built,
+          ...(typeof params.x === "number" ? { x: params.x } : {}),
+          ...(typeof params.z === "number" ? { z: params.z } : {}),
+          ...(typeof params.name === "string" && params.name.trim() ? { name: params.name.trim().slice(0, 60) } : {}),
+        });
+        commitShapes([...currentShapes(), shape], shape.id, t("status.energyChainAdded", { name: shape.name }));
+        const spec = energyChainSpec(settings);
+        const links = energyChainLinks(settings);
+        return { object: mcpShapeSummary(shape), links: links.count, lengthMm: links.length, bendRadius: spec.bendRadius, outerHeight: spec.H, outerWidth: spec.W, pitch: spec.P };
       }
 
       if (command.action === "printer_play") {
@@ -22103,6 +22195,7 @@ export function LayerlingEditor({
           qrCode={historyViewState ? null : qrCodeControls}
           sbcBoard={historyViewState ? null : sbcBoardControls}
           fan={historyViewState ? null : fanControls}
+          energyChain={historyViewState ? null : energyChainControls}
           referenceImage={referenceImageControls}
           toolMemory={viewportToolMemoryRef}
           prepareNewShape={prepareNewShape}

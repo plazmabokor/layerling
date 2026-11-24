@@ -1701,6 +1701,11 @@ export type WorkplaneShape = {
    */
   fan?: FanSettings;
   /**
+   * An energy chain (cable chain): its size, length and ends, so the properties panel can make it again.
+   * On the group that holds its links laid out in a spiral for printing (lib/energyChain.ts).
+   */
+  energyChain?: EnergyChainSettings;
+  /**
    * Set on a body made by wrapping around a cylinder (#106): its box is
    * centred on the cylinder's axis, and aligning, snapping and centring use
    * that box rather than the arc the mesh actually covers.
@@ -2011,6 +2016,24 @@ export type SbcBoardSettings = {
 export type FanType =
   | "blower5015" | "blower5015wide" | "blower5020" | "blower4020" | "blower4010"
   | "axial2510" | "axial3010" | "axial4010" | "axial4020" | "axial5015" | "axial5020" | "axial6015" | "axial6025" | "axial8025" | "axial9225" | "axial12025";
+
+/** The energy chain's sizes, inner height x inner width in mm, or one of the person's own. */
+export type EnergyChainSize = "10x15" | "10x20" | "15x20" | "15x30" | "20x25" | "custom";
+/** An end piece with screw holes: none, printed with the chain, or printed beside it to snap on. */
+export type EnergyChainEnd = "none" | "attached" | "separate";
+export type EnergyChainSettings = {
+  size: EnergyChainSize;
+  /** Only for "custom": the room inside, in mm. */
+  innerHeight?: number;
+  innerWidth?: number;
+  /** The chain's length in cm, from the first link's pin to past the last one's; made of whole links. */
+  lengthCm: number;
+  /** The play between the parts printed in place, in mm (0.2 to 0.8). */
+  play: number;
+  /** The fixed end piece before the first link and the moving one after the last. */
+  start: EnergyChainEnd;
+  end: EnergyChainEnd;
+};
 
 export type FanSettings = {
   fan: FanType;

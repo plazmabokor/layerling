@@ -2019,6 +2019,26 @@ export const tools = [
     },
   },
   {
+    name: "layerling_create_energy_chain",
+    description: "An energy chain (cable chain), like Energy chain in the editor's shape library: closed links printed in one piece, lying on their side in a spiral on the plate, with no supports, whose links still snap apart and together again like a bought chain's (each pin is chamfered on the side the outer plates slide on from; the outer plates bend out round the pin). `size` is the room inside, inner height x inner width in mm: 10x15 (default; outside 15 x 23, pitch 20, bends to R18 like the common 10 x 15 chain), 10x20, 15x20, 15x30 (R28), 20x25 (R38), or custom with `innerHeight` (6 to 30) and `innerWidth` (6 to 60): the outer height is 5 mm more, the pitch 5 mm more than that, the bend radius follows the inner height (R = 2h - 2, at least h + 6). `lengthCm` (5 to 300, default 50) is made of whole links. `play` (0.2 to 0.8 mm, default 0.4) is the room between the parts printed in place. `start` and `end` are the fixed and the moving end piece with a tongue and two M3 holes: none, attached (printed with the chain, default) or separate (printed beside the spiral, to snap on). Stops hold every joint between straight and the smallest radius. It is a group of mesh bodies, one per link, laid on the plate as printed; `x` and `z` move its middle (mm). Returns the object and the chain's links, lengthMm, bendRadius, outerHeight, outerWidth and pitch. One undo step.",
+    inputSchema: {
+      ...editorTargetSchema,
+      properties: {
+        ...editorTargetSchema.properties,
+        size: { type: "string", enum: ["10x15", "10x20", "15x20", "15x30", "20x25", "custom"], description: "Inner height x inner width in mm (default 10x15)." },
+        innerHeight: { type: "number", minimum: 6, maximum: 30, description: "Only for custom: the inner height in mm." },
+        innerWidth: { type: "number", minimum: 6, maximum: 60, description: "Only for custom: the inner width in mm." },
+        lengthCm: { type: "number", minimum: 5, maximum: 300, description: "The chain's length in cm (default 50), made of whole links." },
+        play: { type: "number", minimum: 0.2, maximum: 0.8, description: "The play between the parts printed in place, in mm (default 0.4)." },
+        start: { type: "string", enum: ["none", "attached", "separate"], description: "The fixed end piece (default attached)." },
+        end: { type: "string", enum: ["none", "attached", "separate"], description: "The moving end piece (default attached)." },
+        x: { type: "number", description: "Move its middle to this x (mm)." },
+        z: { type: "number", description: "Move its middle to this z (mm)." },
+        name: { type: "string", description: "The object's name (default: the chain's name)." },
+      },
+    },
+  },
+  {
     name: "layerling_reference_image",
     description: "A reference image (#680), like Reference image in the editor's import window: a picture laid on the workplane - the plate, or the face it was set on - to line parts up on, a photo of a circuit board under its case, say. It is a guide, not a body: never exported (STL, 3MF, OBJ, STEP, SVG), never part of a group, bundle, cut or intersection, never in the print estimate or the build volume warning, and kept once in the .lyl file as a project asset. Without `id`, `base64` (and `fileName`, whose extension .png, .jpg, .jpeg, .webp, .gif or .bmp gives the format) adds one, `width` mm wide (1 to 2000; left out, its longer side 100 mm), half see-through, selected. With `id` it changes that one. Either way: `x` and `z` move its middle (editor coordinates, mm), `rotation` turns it about the vertical in degrees, `opacity` 0.1 to 1 sets how solid it is drawn, `calibrate` { from: { x, y }, to: { x, y }, distance } scales it as the sketch's calibration does - two points in the picture's own pixels (0 at its left and top edge) that lie `distance` mm apart in reality; its proportions stay and its middle stays put - and `locked` true keeps it in place and lets clicks through, false unlocks it. A locked image is refused any other change unless `locked: false` comes with it. layerling_update_object and layerling_delete_objects work on it as on any object. `trace` (true or { part, threshold, height }) traces the picture into a sketch body standing on it (#1060): the dark or light part of the picture becomes its outline, exactly where the picture lies, `height` mm high (default 2), an extruded sketch whose lines can be edited in sketch mode; the answer then also has `traced` (the new body), `outlines` and `lines`. Returns the object; its summary has `referenceImage` with opacity and the picture's pixel size. One undo step.",
     inputSchema: {
