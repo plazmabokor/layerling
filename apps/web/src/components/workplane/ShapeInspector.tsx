@@ -4982,7 +4982,8 @@ export function ShapeInspector({
   // here (a cut group shows one mesh, so only groups whose parts stay apart). Up to a dozen, so the card stays short.
   // A name tag's or an icon tag's layers have their colours in the tag's own card (#215): not shown twice. A fan's
   // parts are its openings and screw holes drawn on it, coloured to show them: nothing to pick there (Discussion #1962).
-  const partColors = !shape.hole && !shape.layeredText && !shape.layeredIcon && !shape.fan && groupShowsPartColors(shape) && (shape.groupOperation === "bundle" || !shape.importedMesh)
+  // An energy chain's links and end pieces are coloured as a whole (its colour, the ends grey): no list of its parts.
+  const partColors = !shape.hole && !shape.layeredText && !shape.layeredIcon && !shape.fan && !shape.energyChain && groupShowsPartColors(shape) && (shape.groupOperation === "bundle" || !shape.importedMesh)
     ? (shape.groupedShapes ?? [])
         .filter((part) => !part.hole && !isNonSolidShape(part))
         .slice(0, PART_COLOR_LIMIT + 1)
@@ -5556,7 +5557,7 @@ export function ShapeInspector({
           disabled={locked || Boolean(shape.hole)}
           onChange={(transparent) => onUpdate({ transparent: transparent || undefined })}
         />
-        {canToggleGroupColors(shape) ? (
+        {canToggleGroupColors(shape) && !shape.energyChain ? (
           <ToggleProperty
             label={`${t("inspector.multicolor")} (Shift+M)`}
             value={groupShowsPartColors(shape)}

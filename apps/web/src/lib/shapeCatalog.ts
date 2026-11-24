@@ -405,7 +405,7 @@ export const energyChainAsset: ToolbarShapeAsset = {
   src: "assets/editor/shape-icons-gray/energy-chain.png",
   menuIcon: "assets/editor/shape-icons-gray/energy-chain.png",
   kind: "box",
-  color: "#3d7cc9",
+  color: "#ff9a1f",
 };
 
 /**

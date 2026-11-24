@@ -8,7 +8,8 @@ import { createLocalId } from "@/lib/localIds";
 import { canonicalizeShape } from "@/lib/workplaneShapes";
 import type { EnergyChainPartRef, EnergyChainSettings, WorkplaneShape } from "@/types/layerling";
 
-const CHAIN_COLOR = "#3d7cc9";
+// A bright orange, as the common bought chains are often orange; the library shows the same.
+const CHAIN_COLOR = "#ff9a1f";
 const END_COLOR = "#7a8696";
 
 /** The settings carried by an energy chain, or null for any other shape. */
