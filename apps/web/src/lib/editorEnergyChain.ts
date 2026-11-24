@@ -2,7 +2,7 @@ import { clearanceMeshShape } from "@/lib/clearanceCheck";
 import { groupedShape } from "@/lib/editorBooleans";
 import { getManifoldRuntime } from "@/lib/editorMeshCore";
 import { energyChainInnerSize, energyChainLinks, energyChainSpec, normalizeEnergyChain, DEFAULT_ENERGY_CHAIN } from "@/lib/energyChain";
-import { energyChainLayout, energyChainPieces, type ChainPieceKind } from "@/lib/energyChainGeometry";
+import { energyChainExtents, energyChainLayout, energyChainPieces, placedChainPiece, type ChainPieceKind } from "@/lib/energyChainGeometry";
 import { t } from "@/lib/i18n";
 import { createLocalId } from "@/lib/localIds";
 import { canonicalizeShape } from "@/lib/workplaneShapes";
@@ -24,7 +24,8 @@ export function energyChainName(settings: EnergyChainSettings) {
 
 /**
  * An energy chain as a new group standing on the plate's middle: its links laid in the spiral they are
- * printed in, each a body of its own a play's width from the next, and its end pieces (lib/energyChain.ts).
+ * printed in, each a body of its own a play's width from the next, and its end pieces - or every piece on
+ * its own in rows, to be snapped together (lib/energyChain.ts).
  * The print frame (x, y on the plate, z up) becomes the design's (x, z towards the viewer, y up).
  */
 export async function energyChainShape(input: EnergyChainSettings): Promise<WorkplaneShape> {
@@ -33,30 +34,29 @@ export async function energyChainShape(input: EnergyChainSettings): Promise<Work
   const runtime = await getManifoldRuntime();
   const pieces = await energyChainPieces(runtime, spec);
   const { count } = energyChainLinks(settings);
-  const layout = energyChainLayout(spec, count, settings.start, settings.end);
-  // Laid out round the plate's middle: the box of all the pins and a link's reach round them.
+  const layout = energyChainLayout(spec, count, settings.start, settings.end, energyChainExtents(pieces), settings.printAs);
+  const placed = layout.map((place) => placedChainPiece(spec, pieces[place.piece], place));
+  // Laid out round the plate's middle: the middle of everything's box.
   let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-  for (const place of layout) {
-    minX = Math.min(minX, place.x);
-    maxX = Math.max(maxX, place.x);
-    minY = Math.min(minY, place.y);
-    maxY = Math.max(maxY, place.y);
+  for (const positions of placed) {
+    for (let i = 0; i < positions.length; i += 3) {
+      minX = Math.min(minX, positions[i]);
+      maxX = Math.max(maxX, positions[i]);
+      minY = Math.min(minY, positions[i + 1]);
+      maxY = Math.max(maxY, positions[i + 1]);
+    }
   }
   const midX = (minX + maxX) / 2;
   const midY = (minY + maxY) / 2;
   const names: Record<ChainPieceKind, string> = { link: "", start: t("energyChain.startPiece"), end: t("energyChain.endPiece") };
   let linkNumber = 0;
-  const parts = layout.map((place) => {
-    const source = pieces[place.piece];
-    const angle = (place.angle * Math.PI) / 180;
-    const cos = Math.cos(angle), sin = Math.sin(angle);
+  const parts = layout.map((place, index) => {
+    const source = placed[index];
     const world = new Array<number>(source.length);
     for (let i = 0; i < source.length; i += 3) {
-      const x = source[i] * cos - source[i + 1] * sin + place.x - midX;
-      const y = source[i] * sin + source[i + 1] * cos + place.y - midY;
-      world[i] = x;
+      world[i] = source[i] - midX;
       world[i + 1] = source[i + 2];
-      world[i + 2] = -y;
+      world[i + 2] = -(source[i + 1] - midY);
     }
     const name = place.piece === "link" ? t("energyChain.link", { number: ++linkNumber }) : names[place.piece];
     const part = clearanceMeshShape(createLocalId("chain-part"), name, place.piece === "link" ? CHAIN_COLOR : END_COLOR, world);

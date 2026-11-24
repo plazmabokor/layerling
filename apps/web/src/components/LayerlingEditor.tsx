@@ -57,7 +57,7 @@ import { qrCodeOf, qrCodeShape, regeneratedQrCodeShape } from "@/lib/editorQrCod
 import { regeneratedSbcBoardShape, sbcBoardOf, sbcBoardShape } from "@/lib/editorSbcBoard";
 import { fanOf, fanShape, regeneratedFanShape } from "@/lib/editorFan";
 import { energyChainOf, energyChainShape, regeneratedEnergyChainShape } from "@/lib/editorEnergyChain";
-import { DEFAULT_ENERGY_CHAIN, ENERGY_CHAIN_ENDS, ENERGY_CHAIN_SIZES, energyChainLinks, energyChainSpec, MAX_CHAIN_INNER_HEIGHT, MAX_CHAIN_INNER_WIDTH, MAX_CHAIN_LENGTH_CM, MAX_CHAIN_PLAY, MIN_CHAIN_INNER_HEIGHT, MIN_CHAIN_INNER_WIDTH, MIN_CHAIN_LENGTH_CM, MIN_CHAIN_PLAY, normalizeEnergyChain } from "@/lib/energyChain";
+import { DEFAULT_ENERGY_CHAIN, ENERGY_CHAIN_ENDS, ENERGY_CHAIN_PRINTS, ENERGY_CHAIN_SIZES, MAX_CHAIN_PIECES, MIN_CHAIN_PIECES, energyChainLinks, energyChainSpec, MAX_CHAIN_INNER_HEIGHT, MAX_CHAIN_INNER_WIDTH, MAX_CHAIN_LENGTH_CM, MAX_CHAIN_PLAY, MIN_CHAIN_INNER_HEIGHT, MIN_CHAIN_INNER_WIDTH, MIN_CHAIN_LENGTH_CM, MIN_CHAIN_PLAY, normalizeEnergyChain } from "@/lib/energyChain";
 import { DEFAULT_FAN, FAN_ORDER, MAX_FAN_CLEARANCE, MAX_FAN_REACH, type FanSettings, type FanType } from "@/lib/fans";
 import type { EnergyChainSettings } from "@/types/layerling";
 import { portWithScrewHolesGroup } from "@/lib/editorPortScrewHoles";
@@ -17399,6 +17399,8 @@ export function LayerlingEditor({
         for (const key of ["start", "end"] as const) {
           if (params[key] !== undefined && !ends.includes(params[key] as string)) throw new Error(`${key} must be one of ${ends.join(", ")}`);
         }
+        if (params.printAs !== undefined && !(ENERGY_CHAIN_PRINTS as readonly string[]).includes(params.printAs as string)) throw new Error(`printAs must be one of ${ENERGY_CHAIN_PRINTS.join(", ")}`);
+        if (params.pieces !== undefined && (!Number.isInteger(params.pieces) || (params.pieces as number) < MIN_CHAIN_PIECES || (params.pieces as number) > MAX_CHAIN_PIECES)) throw new Error(`pieces must be a whole number from ${MIN_CHAIN_PIECES} to ${MAX_CHAIN_PIECES}`);
         for (const axis of ["x", "z"] as const) {
           if (params[axis] !== undefined && (typeof params[axis] !== "number" || !Number.isFinite(params[axis]))) throw new Error(`${axis} must be a number`);
         }
@@ -17411,6 +17413,7 @@ export function LayerlingEditor({
           play: numberIn("play", MIN_CHAIN_PLAY, MAX_CHAIN_PLAY) ?? DEFAULT_ENERGY_CHAIN.play,
           ...(params.start !== undefined ? { start: params.start as EnergyChainSettings["start"] } : {}),
           ...(params.end !== undefined ? { end: params.end as EnergyChainSettings["end"] } : {}),
+          ...(params.printAs === "pieces" ? { printAs: "pieces" as const, pieces: params.pieces as number | undefined } : {}),
         })!;
         const built = await energyChainShape(settings);
         const shape = canonicalizeShape({
@@ -17422,7 +17425,7 @@ export function LayerlingEditor({
         commitShapes([...currentShapes(), shape], shape.id, t("status.energyChainAdded", { name: shape.name }));
         const spec = energyChainSpec(settings);
         const links = energyChainLinks(settings);
-        return { object: mcpShapeSummary(shape), links: links.count, lengthMm: links.length, bendRadius: spec.bendRadius, outerHeight: spec.H, outerWidth: spec.W, pitch: spec.P };
+        return { object: mcpShapeSummary(shape), printAs: settings.printAs ?? "spiral", links: links.count, lengthMm: links.length, bendRadius: spec.bendRadius, outerHeight: spec.H, outerWidth: spec.W, pitch: spec.P };
       }
 
       if (command.action === "printer_play") {

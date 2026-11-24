@@ -27,7 +27,7 @@ layerling 里的每个零件都从一个形状开始。用这些形状，你可�
 - **{{ui:library.section.connections}}：** {{ui:shape.thread}}（螺杆、螺钉、螺母和螺纹孔）、沉头螺钉下的 {{ui:shape.finishingWasher}}、一体打印的 {{ui:shape.hinge}} 和 {{ui:shape.dovetail}}。更多见[螺纹与机械件](chapter:threads-and-mechanics)。
 - **{{ui:library.section.enclosure}}：** 用于热熔螺母和自攻螺钉的 {{ui:shape.screwBoss}}、带卡座的 {{ui:shape.snapFit}}，以及 {{ui:shape.rib}} 或角撑板。更多见[螺纹与机械件](chapter:threads-and-mechanics)。
 - **{{ui:library.section.mechanics}}：** {{ui:shape.spring}}、{{ui:shape.gear}}、{{ui:shape.hirth}} 和 {{ui:shape.pulley}}。
-- **{{ui:library.section.systems}}：** {{ui:shape.gridfinity}} 收纳盒和底板，以及 {{ui:shape.sbcBoard}}，一块按实际尺寸做的单板计算机，用来围绕它设计外壳；还有 {{ui:shape.fan}}，离心和轴流风扇，其螺丝孔和风口可以穿过墙壁。 {{ui:shape.energyChain}} 是一体打印的拖链，侧放成螺旋状，无需支撑；它的链节仍可像买来的拖链一样拆开再扣上。它的卡片可设置尺寸（10 x 15 到 20 x 25，或自定义）、以厘米计的长度、间隙以及两个带螺丝孔的端头。
+- **{{ui:library.section.systems}}：** {{ui:shape.gridfinity}} 收纳盒和底板，以及 {{ui:shape.sbcBoard}}，一块按实际尺寸做的单板计算机，用来围绕它设计外壳；还有 {{ui:shape.fan}}，离心和轴流风扇，其螺丝孔和风口可以穿过墙壁。 {{ui:shape.energyChain}} 是一体打印的拖链，侧放成螺旋状，无需支撑；它的链节仍可像买来的拖链一样拆开再扣上。它的卡片可设置尺寸（10 x 15 到 20 x 25，或自定义）、以厘米计的长度、间隙以及两个带螺丝孔的端头。也可以逐节单独打印，每节紧密排成几行，打印后再扣在一起（例如用多种颜色）。
 - **{{ui:library.section.lettering}}：** {{ui:shape.text}}，也可沿圆弧排列，以及 {{ui:shape.nameTag}}、{{ui:shape.iconTag}} 和 {{ui:shape.qrCode}}。更多见[文字](chapter:text)。
 - **{{ui:library.section.decorative}}：** {{ui:shape.star}}、{{ui:shape.heart}}、{{ui:shape.crescent}}、用于握持的 {{ui:shape.knurl}}，以及 {{ui:shape.patties}}，一块用于镂空模板和印章的图案板。
 - **{{ui:library.section.helpers}}：** {{ui:shape.ruler}}，它只是测量工具，永远不会出现在导出文件中。

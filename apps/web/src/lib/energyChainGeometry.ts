@@ -257,17 +257,76 @@ function buildPieces(runtime: ManifoldToplevel, spec: EnergyChainSpec): ChainPie
   }
 }
 
-/** One piece where it lies on the plate: the piece, its pin's place and its turn (degrees, about z). */
-export type ChainPlacement = { piece: ChainPieceKind; x: number; y: number; angle: number };
+/**
+ * One piece where it lies on the plate: the piece, its pin's place and its turn (degrees, about z), and
+ * whether it lies on its side as in the spiral or, printed on its own, on its top (`flat`): a piece alone
+ * has no neighbour under its inner plates, so it lies on the flat top of its plates and the lid.
+ */
+export type ChainPlacement = { piece: ChainPieceKind; x: number; y: number; angle: number; flat?: boolean };
+
+/** How far each piece reaches along the chain, its pin at 0 (print frame x). */
+export type ChainExtents = Record<ChainPieceKind, [number, number]>;
+
+export function energyChainExtents(pieces: ChainPieces): ChainExtents {
+  const reach = (positions: Float32Array): [number, number] => {
+    let min = Infinity, max = -Infinity;
+    for (let i = 0; i < positions.length; i += 3) {
+      min = Math.min(min, positions[i]);
+      max = Math.max(max, positions[i]);
+    }
+    return [min, max];
+  };
+  return { link: reach(pieces.link), start: reach(pieces.start), end: reach(pieces.end) };
+}
+
+/** A piece's triangles where the placement puts them, in the print frame (z up from the plate). */
+export function placedChainPiece(spec: EnergyChainSpec, source: Float32Array, place: ChainPlacement): Float32Array {
+  const angle = (place.angle * Math.PI) / 180;
+  const cos = Math.cos(angle), sin = Math.sin(angle);
+  const out = new Float32Array(source.length);
+  for (let i = 0; i < source.length; i += 3) {
+    // On its top: the chain's height (y) goes down into the plate, its width (z) lies across.
+    const x = source[i];
+    const y = place.flat ? source[i + 2] : source[i + 1];
+    const z = place.flat ? spec.H / 2 - source[i + 1] : source[i + 2];
+    out[i] = x * cos - y * sin + place.x;
+    out[i + 1] = x * sin + y * cos + place.y;
+    out[i + 2] = z;
+  }
+  return out;
+}
+
+/** The gap between pieces printed on their own. */
+const PIECE_GAP = 2;
 
 /**
- * Where every piece lies when printed (print frame): the links on the spiral, the fixed end before the
- * first one bent in towards the free middle as far as the joint goes, the moving end after the last one
- * straight on; an end printed apart lies beside the spiral, straight, to be snapped on.
+ * Where every piece lies when printed (print frame). In the spiral: the links on it, the fixed end before
+ * the first one bent in towards the free middle as far as the joint goes, the moving end after the last
+ * one straight on; an end printed apart lies beside the spiral on its top, to be snapped on. Link by link
+ * ("pieces"): every link on its top, in rows close together, about as deep as wide, the ends in a row of
+ * their own after them.
  */
-export function energyChainLayout(spec: EnergyChainSpec, count: number, start: "none" | "attached" | "separate", end: "none" | "attached" | "separate"): ChainPlacement[] {
-  const pins = energyChainSpiral(spec, count);
+export function energyChainLayout(spec: EnergyChainSpec, count: number, start: "none" | "attached" | "separate", end: "none" | "attached" | "separate", extents: ChainExtents, printAs: "spiral" | "pieces" = "spiral"): ChainPlacement[] {
   const placements: ChainPlacement[] = [];
+  const across = spec.W + PIECE_GAP;
+  const length = (piece: ChainPieceKind) => extents[piece][1] - extents[piece][0];
+  // Pieces apart in a row from (x0, y): each one's own reach along x, one after another.
+  const row = (pieces: ChainPieceKind[], x0: number, y: number) => {
+    let x = x0;
+    for (const piece of pieces) {
+      placements.push({ piece, x: x - extents[piece][0], y, angle: 0, flat: true });
+      x += length(piece) + PIECE_GAP;
+    }
+  };
+  const ends = [...(start === "separate" ? ["start" as const] : []), ...(end === "separate" ? ["end" as const] : [])];
+  if (printAs === "pieces") {
+    const cell = length("link") + PIECE_GAP;
+    const columns = Math.max(1, Math.min(count, Math.ceil(Math.sqrt((count * across) / cell))));
+    for (let i = 0; i < count; i++) row(["link"], (i % columns) * cell, Math.floor(i / columns) * across);
+    if (ends.length) row(ends, 0, Math.ceil(count / columns) * across);
+    return placements;
+  }
+  const pins = energyChainSpiral(spec, count);
   const angles: number[] = [];
   for (let i = 0; i < count; i++) {
     const [x0, y0] = pins[i];
@@ -283,10 +342,7 @@ export function energyChainLayout(spec: EnergyChainSpec, count: number, start: "
   }
   if (start === "attached") placements.push({ piece: "start", x: pins[0][0], y: pins[0][1], angle: angles[0] - (spec.th1 - 1) });
   if (end === "attached") placements.push({ piece: "end", x: pins[count][0], y: pins[count][1], angle: angles[count - 1] + spec.th0 + 1 });
-  // Apart: beside the spiral on its right, straight, one above the other.
-  const left = maxX + spec.H;
-  const pieceLength = 2 * spec.Ro + 5 + 21;
-  if (start === "separate") placements.push({ piece: "start", x: left + pieceLength - spec.Ro, y: minY + spec.H, angle: 0 });
-  if (end === "separate") placements.push({ piece: "end", x: left + spec.Ro, y: minY + spec.H + (start === "separate" ? spec.H + 8 : 0), angle: 0 });
+  // Apart: beside the spiral on its right, one above the other.
+  ends.forEach((piece, i) => row([piece], maxX + spec.H, minY - spec.Ro + i * across));
   return placements;
 }

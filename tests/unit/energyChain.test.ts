@@ -1,7 +1,7 @@
 import ManifoldModule, { type Manifold, type ManifoldToplevel } from "manifold-3d";
 import { beforeAll, describe, expect, it } from "vitest";
 import { DEFAULT_ENERGY_CHAIN, energyChainBendRadius, energyChainLinks, energyChainSpec, energyChainSpiral, normalizeEnergyChain } from "@/lib/energyChain";
-import { energyChainLayout, energyChainPieces } from "@/lib/energyChainGeometry";
+import { energyChainExtents, energyChainLayout, energyChainPieces, placedChainPiece } from "@/lib/energyChainGeometry";
 import type { EnergyChainSettings } from "@/types/layerling";
 
 let runtime: ManifoldToplevel;
@@ -100,9 +100,9 @@ describe("energy chain geometry", () => {
     const spec = energyChainSpec(chain);
     const pieces = await energyChainPieces(runtime, spec);
     const { count } = energyChainLinks(chain);
-    const layout = energyChainLayout(spec, count, "attached", "attached");
+    const layout = energyChainLayout(spec, count, "attached", "attached", energyChainExtents(pieces));
     expect(layout.filter((place) => place.piece === "link")).toHaveLength(count);
-    const solids = layout.map((place) => solid(pieces[place.piece]).rotate([0, 0, place.angle]).translate([place.x, place.y, 0]));
+    const solids = layout.map((place) => solid(placedChainPiece(spec, pieces[place.piece], place)));
     const all = runtime.Manifold.union(solids);
     // Apart by the play everywhere: fused, two pieces would be one.
     expect(all.decompose()).toHaveLength(solids.length);
@@ -112,12 +112,41 @@ describe("energy chain geometry", () => {
     expect(box.max[1] - box.min[1]).toBeLessThan(256);
   }, 300000);
 
-  it("lays ends printed apart beside the spiral, clear of it", async () => {
+  it("lays ends printed apart beside the spiral on their tops, clear of it", async () => {
     const chain = settings({ lengthCm: 30, start: "separate", end: "separate" });
     const spec = energyChainSpec(chain);
     const pieces = await energyChainPieces(runtime, spec);
-    const layout = energyChainLayout(spec, energyChainLinks(chain).count, "separate", "separate");
-    const solids = layout.map((place) => solid(pieces[place.piece]).rotate([0, 0, place.angle]).translate([place.x, place.y, 0]));
+    const layout = energyChainLayout(spec, energyChainLinks(chain).count, "separate", "separate", energyChainExtents(pieces));
+    const solids = layout.map((place) => solid(placedChainPiece(spec, pieces[place.piece], place)));
     expect(runtime.Manifold.union(solids).decompose()).toHaveLength(solids.length);
+    layout.forEach((place, i) => {
+      if (place.piece === "link") return;
+      expect(place.flat).toBe(true);
+      const box = solids[i].boundingBox();
+      expect(box.min[2]).toBeCloseTo(0, 3);
+      expect(box.max[2]).toBeCloseTo(spec.H, 3);
+    });
+  }, 120000);
+
+  it("prints link by link: as many links as asked, each on its top, in rows close together, the ends apart", async () => {
+    const chain = settings({ printAs: "pieces", pieces: 12, start: "attached", end: "separate" });
+    expect(chain.start).toBe("separate");
+    expect(energyChainLinks(chain).count).toBe(12);
+    const spec = energyChainSpec(chain);
+    const pieces = await energyChainPieces(runtime, spec);
+    const layout = energyChainLayout(spec, 12, chain.start, chain.end, energyChainExtents(pieces), "pieces");
+    expect(layout.filter((place) => place.piece === "link")).toHaveLength(12);
+    expect(layout.every((place) => place.flat)).toBe(true);
+    const solids = layout.map((place) => solid(placedChainPiece(spec, pieces[place.piece], place)));
+    const all = runtime.Manifold.union(solids);
+    expect(all.decompose()).toHaveLength(solids.length);
+    for (const one of solids) expect(one.boundingBox().min[2]).toBeCloseTo(0, 3);
+    // Rows close together: the block about as deep as wide, with 2 mm between the pieces.
+    const box = all.boundingBox();
+    const [width, depth] = [box.max[0] - box.min[0], box.max[1] - box.min[1]];
+    expect(Math.max(width, depth) / Math.min(width, depth)).toBeLessThan(2);
+    expect(width * depth).toBeLessThan(13 * (spec.P + 2 * spec.Ro + 8) * (spec.W + 2) * 1.6);
+    // Back to the spiral: the length counts again.
+    expect(energyChainLinks(settings({ lengthCm: 30 })).count).toBe(15);
   }, 120000);
 });

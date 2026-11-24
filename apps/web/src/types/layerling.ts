@@ -2021,6 +2021,8 @@ export type FanType =
 export type EnergyChainSize = "10x15" | "10x20" | "15x20" | "15x30" | "20x25" | "custom";
 /** An end piece with screw holes: none, printed with the chain, or printed beside it to snap on. */
 export type EnergyChainEnd = "none" | "attached" | "separate";
+/** Printed as one chain in a spiral, or link by link, laid in rows to snap together (several colours, say). */
+export type EnergyChainPrint = "spiral" | "pieces";
 export type EnergyChainSettings = {
   size: EnergyChainSize;
   /** Only for "custom": the room inside, in mm. */
@@ -2033,6 +2035,9 @@ export type EnergyChainSettings = {
   /** The fixed end piece before the first link and the moving one after the last. */
   start: EnergyChainEnd;
   end: EnergyChainEnd;
+  /** "pieces": `pieces` links, each on its own, in rows; the ends then come apart too (never "attached"). Unset: the spiral. */
+  printAs?: EnergyChainPrint;
+  pieces?: number;
 };
 
 export type FanSettings = {

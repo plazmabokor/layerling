@@ -21,7 +21,7 @@ import {
 } from "@/lib/projectAttachments";
 import { normalizeQrSettings } from "@/lib/qrCode";
 import { FAN_ORDER, MAX_FAN_CLEARANCE, MAX_FAN_REACH } from "@/lib/fans";
-import { ENERGY_CHAIN_ENDS, ENERGY_CHAIN_SIZES, MAX_CHAIN_INNER_HEIGHT, MAX_CHAIN_INNER_WIDTH, MAX_CHAIN_LENGTH_CM, MAX_CHAIN_PLAY, MIN_CHAIN_INNER_HEIGHT, MIN_CHAIN_INNER_WIDTH, MIN_CHAIN_LENGTH_CM, MIN_CHAIN_PLAY } from "@/lib/energyChain";
+import { ENERGY_CHAIN_ENDS, ENERGY_CHAIN_PRINTS, ENERGY_CHAIN_SIZES, MAX_CHAIN_INNER_HEIGHT, MAX_CHAIN_INNER_WIDTH, MAX_CHAIN_LENGTH_CM, MAX_CHAIN_PIECES, MAX_CHAIN_PLAY, MIN_CHAIN_INNER_HEIGHT, MIN_CHAIN_INNER_WIDTH, MIN_CHAIN_LENGTH_CM, MIN_CHAIN_PIECES, MIN_CHAIN_PLAY } from "@/lib/energyChain";
 import { pattiesSettingsProblem } from "@/lib/pattiesPattern";
 import { MAX_SBC_BUTTON_REACH, MAX_SBC_CLEARANCE, MAX_SBC_REACH, MAX_SBC_UP_REACH, MIN_SBC_UP_REACH, SBC_BOARD_ORDER } from "@/lib/sbcBoards";
 import { importedShapeFromStl, stlReadBeforeZUp, type StlReadOptions } from "@/lib/stlImport";
@@ -1548,9 +1548,9 @@ function validateShapeDefinition(definition: Record<string, unknown>, label: str
       }
     }
   }
-  // An energy chain's settings: a known size (or one's own inside the limits), a length, a play and its ends. Old projects have none.
+  // An energy chain's settings: a known size (or one's own inside the limits), a length, a play, its ends and link by link how many. Old projects have none.
   if (definition.energyChain !== undefined) {
-    const chain = definition.energyChain as { size?: unknown; innerHeight?: unknown; innerWidth?: unknown; lengthCm?: unknown; play?: unknown; start?: unknown; end?: unknown } | null;
+    const chain = definition.energyChain as { size?: unknown; innerHeight?: unknown; innerWidth?: unknown; lengthCm?: unknown; play?: unknown; start?: unknown; end?: unknown; printAs?: unknown; pieces?: unknown } | null;
     const sizes = [...ENERGY_CHAIN_SIZES, "custom"];
     if (!chain || typeof chain !== "object" || !sizes.includes(chain.size as never)) {
       throw new Error(`${label}.energyChain.size must be one of ${sizes.join(", ")}`);
@@ -1563,6 +1563,8 @@ function validateShapeDefinition(definition: Record<string, unknown>, label: str
     for (const key of ["start", "end"] as const) {
       if (!ENERGY_CHAIN_ENDS.includes(chain[key] as never)) throw new Error(`${label}.energyChain.${key} must be one of ${ENERGY_CHAIN_ENDS.join(", ")}`);
     }
+    if (chain.printAs !== undefined && !ENERGY_CHAIN_PRINTS.includes(chain.printAs as never)) throw new Error(`${label}.energyChain.printAs must be one of ${ENERGY_CHAIN_PRINTS.join(", ")}`);
+    if (chain.pieces !== undefined && !(Number.isInteger(chain.pieces) && inRange(chain.pieces, MIN_CHAIN_PIECES, MAX_CHAIN_PIECES))) throw new Error(`${label}.energyChain.pieces is outside the supported range`);
   }
   // The corners of a text's line (#215): a layer of a name tag can be bevelled or sharp now, so an
   // unknown corner is refused rather than read as sharp.

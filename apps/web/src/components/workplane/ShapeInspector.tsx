@@ -224,9 +224,9 @@ import { FONT_MANAGER_OPTION, requestFontManager } from "@/lib/fontManagerEvents
 import { FontPicker } from "@/components/workplane/FontPicker";
 import { SurfacePatternPicker } from "@/components/workplane/SurfacePatternPicker";
 import { QR_BYTE_CAPACITY, qrByteLength, qrTextFits, type QrCodeSettings } from "@/lib/qrCode";
-import { ENERGY_CHAIN_ENDS, ENERGY_CHAIN_SIZES, energyChainLinks, energyChainSpec, MAX_CHAIN_INNER_HEIGHT, MAX_CHAIN_INNER_WIDTH, MAX_CHAIN_LENGTH_CM, MAX_CHAIN_PLAY, MIN_CHAIN_INNER_HEIGHT, MIN_CHAIN_INNER_WIDTH, MIN_CHAIN_LENGTH_CM, MIN_CHAIN_PLAY, normalizeEnergyChain } from "@/lib/energyChain";
+import { DEFAULT_CHAIN_PIECES, ENERGY_CHAIN_ENDS, ENERGY_CHAIN_PRINTS, ENERGY_CHAIN_SIZES, energyChainLinks, energyChainSpec, MAX_CHAIN_INNER_HEIGHT, MAX_CHAIN_INNER_WIDTH, MAX_CHAIN_LENGTH_CM, MAX_CHAIN_PIECES, MAX_CHAIN_PLAY, MIN_CHAIN_INNER_HEIGHT, MIN_CHAIN_INNER_WIDTH, MIN_CHAIN_LENGTH_CM, MIN_CHAIN_PIECES, MIN_CHAIN_PLAY, normalizeEnergyChain } from "@/lib/energyChain";
 import { FAN_LABEL_KEYS, FAN_ORDER, FANS, MAX_FAN_CLEARANCE, MAX_FAN_REACH, normalizeFanSettings, type FanSettings, type FanType } from "@/lib/fans";
-import type { EnergyChainEnd, EnergyChainSettings, EnergyChainSize } from "@/types/layerling";
+import type { EnergyChainEnd, EnergyChainPrint, EnergyChainSettings, EnergyChainSize } from "@/types/layerling";
 import { PATTIES_MIN_HEIGHT, pattiesBaseThickness, pattiesPlanOfShape, pattiesSettingsOfShape } from "@/lib/pattiesGeometry";
 import { PattiesMotifLoader } from "@/components/workplane/PattiesMotifLoader";
 import {
@@ -7080,6 +7080,10 @@ const ENERGY_CHAIN_END_LABELS: Record<EnergyChainEnd, MessageKey> = {
   attached: "energyChain.endAttached",
   separate: "energyChain.endSeparate",
 };
+const ENERGY_CHAIN_PRINT_LABELS: Record<EnergyChainPrint, MessageKey> = {
+  spiral: "energyChain.printSpiral",
+  pieces: "energyChain.printPieces",
+};
 
 /**
  * The energy chain card, open and first: the size (a standard one or one's own inside), the length in
@@ -7127,6 +7131,9 @@ function EnergyChainCard({ shapeId, controls, workspace, disabled, onInteraction
   const unit = lengthDisplayUnit(workspace).label;
   const tooBig = controls.footprint.width > controls.plate.width || controls.footprint.depth > controls.plate.depth;
   const custom = settings.size === "custom";
+  const pieces = settings.printAs === "pieces";
+  // Link by link an end cannot come with the chain: that choice is left out.
+  const endOptions = ENERGY_CHAIN_ENDS.filter((end) => !(pieces && end === "attached")).map((end) => ({ value: end, label: t(ENERGY_CHAIN_END_LABELS[end]) }));
   return (
     <div className={`property-card name-tag-card energy-chain-card ${open ? "" : "collapsed"}`}>
       <button className="property-card-header" type="button" aria-expanded={open} aria-controls={`energy-chain-${shapeId}`} onClick={() => setOpen((current) => !current)}>
@@ -7157,18 +7164,44 @@ function EnergyChainCard({ shapeId, controls, workspace, disabled, onInteraction
               <p className="name-tag-hint">{t("energyChain.customHint")}</p>
             </>
           ) : null}
-          <RangeProperty
-            id="energyChainLengthCm"
-            label={t("energyChain.length")}
-            value={settings.lengthCm}
-            min={MIN_CHAIN_LENGTH_CM}
-            max={MAX_CHAIN_LENGTH_CM}
-            step={0.5}
-            workspace={workspace}
+          <SelectProperty
+            type="select"
+            label={t("energyChain.printAs")}
+            value={settings.printAs ?? "spiral"}
+            options={ENERGY_CHAIN_PRINTS.map((print) => ({ value: print, label: t(ENERGY_CHAIN_PRINT_LABELS[print]) }))}
             disabled={disabled}
-            onChange={(lengthCm) => regenerate({ lengthCm })}
-            onInteractionActiveChange={onInteractionActiveChange}
+            onChange={(value) => regenerate(value === "pieces" ? { printAs: "pieces", pieces: settings.pieces ?? DEFAULT_CHAIN_PIECES } : { printAs: undefined, pieces: undefined })}
           />
+          {pieces ? (
+            <>
+              <RangeProperty
+                id="energyChainPieces"
+                label={t("energyChain.pieces")}
+                value={count}
+                min={MIN_CHAIN_PIECES}
+                max={MAX_CHAIN_PIECES}
+                step={1}
+                workspace={workspace}
+                disabled={disabled}
+                onChange={(value) => regenerate({ pieces: Math.round(value) })}
+                onInteractionActiveChange={onInteractionActiveChange}
+              />
+              <p className="name-tag-hint">{t("energyChain.piecesHint")}</p>
+            </>
+          ) : (
+            <RangeProperty
+              id="energyChainLengthCm"
+              label={t("energyChain.length")}
+              value={settings.lengthCm}
+              min={MIN_CHAIN_LENGTH_CM}
+              max={MAX_CHAIN_LENGTH_CM}
+              step={0.5}
+              workspace={workspace}
+              disabled={disabled}
+              onChange={(lengthCm) => regenerate({ lengthCm })}
+              onInteractionActiveChange={onInteractionActiveChange}
+            />
+          )}
           <label className="select-property energy-chain-play">
             <span>{t("energyChain.play")} ({unit})</span>
             <CompactMeasureField label={t("energyChain.play")} value={settings.play} min={MIN_CHAIN_PLAY} max={MAX_CHAIN_PLAY} workspace={workspace} disabled={disabled} onChange={(play) => regenerate({ play })} onInteractionActiveChange={onInteractionActiveChange} />
@@ -7178,7 +7211,7 @@ function EnergyChainCard({ shapeId, controls, workspace, disabled, onInteraction
             type="select"
             label={t("energyChain.start")}
             value={settings.start}
-            options={ENERGY_CHAIN_ENDS.map((end) => ({ value: end, label: t(ENERGY_CHAIN_END_LABELS[end]) }))}
+            options={endOptions}
             disabled={disabled}
             onChange={(value) => regenerate({ start: value as EnergyChainEnd })}
           />
@@ -7186,7 +7219,7 @@ function EnergyChainCard({ shapeId, controls, workspace, disabled, onInteraction
             type="select"
             label={t("energyChain.end")}
             value={settings.end}
-            options={ENERGY_CHAIN_ENDS.map((end) => ({ value: end, label: t(ENERGY_CHAIN_END_LABELS[end]) }))}
+            options={endOptions}
             disabled={disabled}
             onChange={(value) => regenerate({ end: value as EnergyChainEnd })}
           />
@@ -7200,7 +7233,7 @@ function EnergyChainCard({ shapeId, controls, workspace, disabled, onInteraction
           </p>
           {tooBig && !busy ? (
             <p className="name-tag-hint icon-tag-card-error" role="alert">
-              {t("energyChain.tooBig", { width: Math.round(controls.footprint.width), depth: Math.round(controls.footprint.depth), plateWidth: Math.round(controls.plate.width), plateDepth: Math.round(controls.plate.depth) })}
+              {t(pieces ? "energyChain.tooBigPieces" : "energyChain.tooBig", { width: Math.round(controls.footprint.width), depth: Math.round(controls.footprint.depth), plateWidth: Math.round(controls.plate.width), plateDepth: Math.round(controls.plate.depth) })}
             </p>
           ) : null}
           {error ? <p className="name-tag-hint icon-tag-card-error" role="alert">{error}</p> : null}

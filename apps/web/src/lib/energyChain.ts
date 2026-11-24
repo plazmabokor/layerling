@@ -1,4 +1,4 @@
-import type { EnergyChainEnd, EnergyChainSettings, EnergyChainSize } from "@/types/layerling";
+import type { EnergyChainEnd, EnergyChainPrint, EnergyChainSettings, EnergyChainSize } from "@/types/layerling";
 
 /*
  * The energy chain (cable chain) shape: a chain printed in one piece, lying on its side in a spiral, with
@@ -38,6 +38,10 @@ export const MIN_CHAIN_INNER_WIDTH = 6;
 export const MAX_CHAIN_INNER_WIDTH = 60;
 export const MIN_CHAIN_LENGTH_CM = 5;
 export const MAX_CHAIN_LENGTH_CM = 300;
+export const MIN_CHAIN_PIECES = 1;
+export const MAX_CHAIN_PIECES = 300;
+export const DEFAULT_CHAIN_PIECES = 10;
+export const ENERGY_CHAIN_PRINTS: readonly EnergyChainPrint[] = ["spiral", "pieces"];
 export const MIN_CHAIN_PLAY = 0.2;
 export const MAX_CHAIN_PLAY = 0.8;
 export const DEFAULT_CHAIN_PLAY = 0.4;
@@ -60,6 +64,13 @@ export function normalizeEnergyChain(input: Partial<EnergyChainSettings> | null 
     start: end(input.start, DEFAULT_ENERGY_CHAIN.start),
     end: end(input.end, DEFAULT_ENERGY_CHAIN.end),
   };
+  if (input.printAs === "pieces") {
+    settings.printAs = "pieces";
+    settings.pieces = Math.round(clamp(finite(input.pieces, DEFAULT_CHAIN_PIECES), MIN_CHAIN_PIECES, MAX_CHAIN_PIECES));
+    // Link by link there is no chain to print an end with: an end comes apart too.
+    if (settings.start === "attached") settings.start = "separate";
+    if (settings.end === "attached") settings.end = "separate";
+  }
   if (size === "custom") {
     const preset = SIZE_OF["10x15"];
     settings.innerHeight = round1(clamp(finite(input.innerHeight, preset.h), MIN_CHAIN_INNER_HEIGHT, MAX_CHAIN_INNER_HEIGHT));
@@ -159,10 +170,12 @@ export function energyChainSpec(settings: EnergyChainSettings): EnergyChainSpec 
   };
 }
 
-/** How many links make the length asked for, and the length they make (pin of the first to pin past the last, in mm). */
+/** How many links make the length asked for (or as many as asked for, link by link), and the length they make (pin of the first to pin past the last, in mm). */
 export function energyChainLinks(settings: EnergyChainSettings) {
   const spec = energyChainSpec(settings);
-  const count = Math.max(2, Math.round((settings.lengthCm * 10) / spec.P));
+  const count = settings.printAs === "pieces"
+    ? Math.max(MIN_CHAIN_PIECES, settings.pieces ?? DEFAULT_CHAIN_PIECES)
+    : Math.max(2, Math.round((settings.lengthCm * 10) / spec.P));
   return { count, length: count * spec.P };
 }
 
