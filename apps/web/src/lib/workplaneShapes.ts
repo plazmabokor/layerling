@@ -1056,6 +1056,7 @@ export function workplaneShapesEqual(a: WorkplaneShape, b: WorkplaneShape) {
     (a.sbcBoard?.buttonReach ?? 0) === (b.sbcBoard?.buttonReach ?? 0) &&
     JSON.stringify(a.fan ?? null) === JSON.stringify(b.fan ?? null) &&
     JSON.stringify(a.energyChain ?? null) === JSON.stringify(b.energyChain ?? null) &&
+    JSON.stringify(a.energyChainPart ?? null) === JSON.stringify(b.energyChainPart ?? null) &&
     a.importedMesh === b.importedMesh &&
     a.imagePlate === b.imagePlate &&
     a.sketchProfile === b.sketchProfile &&

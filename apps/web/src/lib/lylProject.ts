@@ -1566,6 +1566,14 @@ function validateShapeDefinition(definition: Record<string, unknown>, label: str
     if (chain.printAs !== undefined && !ENERGY_CHAIN_PRINTS.includes(chain.printAs as never)) throw new Error(`${label}.energyChain.printAs must be one of ${ENERGY_CHAIN_PRINTS.join(", ")}`);
     if (chain.pieces !== undefined && !(Number.isInteger(chain.pieces) && inRange(chain.pieces, MIN_CHAIN_PIECES, MAX_CHAIN_PIECES))) throw new Error(`${label}.energyChain.pieces is outside the supported range`);
   }
+  // A chain piece's note of what it is and where it lay, for its exact body.
+  if (definition.energyChainPart !== undefined) {
+    const part = definition.energyChainPart as { piece?: unknown; origin?: unknown; place?: unknown; settings?: unknown } | null;
+    const numbers = (value: unknown, count: number) => Array.isArray(value) && value.length === count && value.every((item) => typeof item === "number" && Number.isFinite(item));
+    if (!part || typeof part !== "object" || !["link", "start", "end"].includes(part.piece as string) || !numbers(part.origin, 3) || !part.place || typeof part.place !== "object" || !part.settings || typeof part.settings !== "object") {
+      throw new Error(`${label}.energyChainPart is not a chain piece`);
+    }
+  }
   // The corners of a text's line (#215): a layer of a name tag can be bevelled or sharp now, so an
   // unknown corner is refused rather than read as sharp.
   const textJoin = (definition.textStroke as { join?: unknown } | undefined)?.join;

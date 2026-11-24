@@ -3,7 +3,7 @@ import * as THREE from "three";
 import { taperedSlotOutline } from "@/lib/slotGeometry";
 import { weldOnGrid } from "@/lib/gridWeld";
 import type { WorkplaneShape } from "@/types/layerling";
-import type { CadModifierProfileLoop, CadModifierProfilePart, CadModifierProfileSegment, CadModifierEnclosurePart, CadModifierGridfinityPart, CadModifierHelicalGearPart, CadModifierHirthPart, CadModifierSpringPart, CadModifierSweepPiece, CadModifierThreadPart } from "@/lib/cadModifierTypes";
+import type { CadModifierProfileLoop, CadModifierProfilePart, CadModifierProfileSegment, CadModifierEnclosurePart, CadModifierEnergyChainPart, CadModifierGridfinityPart, CadModifierHelicalGearPart, CadModifierHirthPart, CadModifierSpringPart, CadModifierSweepPiece, CadModifierThreadPart } from "@/lib/cadModifierTypes";
 import { hirthMeasures } from "@/lib/hirthGeometry";
 import { profileArcPoint, profileLoopBounds, TWIST_SECTION_STEP, validateCadProfile } from "@/lib/cadProfileSolid";
 import { cadTransformFromMatrix } from "@/lib/cadBakeMetadata";
@@ -34,6 +34,8 @@ import { normalizeSketchStroke } from "@/lib/sketchStroke";
 import { textHasEdge } from "@/lib/textEdge";
 import { textFillComponents, textFillPieceGeometry, textHasFill } from "@/lib/textFill";
 import { loadedManifoldRuntime } from "@/lib/manifoldHandle";
+import { energyChainSpec, normalizeEnergyChain } from "@/lib/energyChain";
+import { energyChainPiecesNow } from "@/lib/energyChainGeometry";
 import { threadBuildPlan, WHITWORTH_PROFILE_CONSTANTS } from "@/lib/threadGeometry";
 import { springBuildPlan, springRingSectionShare } from "@/lib/springGeometry";
 import { flatSpringProfileLoops } from "@/lib/flatSpringGeometry";
@@ -2029,6 +2031,34 @@ export function cadModifierHirthForShape(shape: WorkplaneShape): CadModifierHirt
   if (![width, depth, shape.height].every((value) => Number.isFinite(value) && value > 0)) return null;
   const { rx, rz, height, teeth, toothHeight, boreRadius, split } = hirthMeasures(shape, width, depth);
   return { rx, rz, height, teeth, toothHeight, boreRadius, ...(split !== 0.5 ? { split } : {}), transform: profileTransformForShape(shape) };
+}
+
+/**
+ * A link or end piece of an energy chain as the exact body its mesh draws (lib/energyChainGeometry.ts works out
+ * both from the same outlines), or null for one that has to stay its mesh: no 2D kernel loaded yet to work the
+ * outlines out, a size changed since (the mesh stretched), or a body cut or rounded since (it carries its own BREP).
+ */
+export function cadModifierEnergyChainForShape(shape: WorkplaneShape): CadModifierEnergyChainPart | null {
+  const ref = shape.energyChainPart;
+  if (!ref || shape.kind !== "mesh" || !shape.importedMesh || shape.cadBrep || shape.groupedShapes?.length || shapeHasShapeDeform(shape)) return null;
+  const mesh = shape.importedMesh;
+  const same = (a: number, b: number | undefined) => b !== undefined && Math.abs(a - b) <= 1e-6 * Math.max(1, Math.abs(a));
+  if (!same(shapeWidth(shape), mesh.baseWidth) || !same(shapeDepth(shape), mesh.baseDepth) || !same(shape.height, mesh.baseHeight)) return null;
+  const settings = normalizeEnergyChain(ref.settings);
+  if (!settings) return null;
+  const spec = energyChainSpec(settings);
+  const pieces = energyChainPiecesNow(loadedManifoldRuntime(), spec);
+  if (!pieces) return null;
+  const exact = pieces.exact[ref.piece];
+  // The piece's own frame (y up) into the print frame, laid as it was (on its side, or on its top), into the
+  // mesh's own frame (y up, its middle at the origin, the bottom at y = 0).
+  const toPrint = new THREE.Matrix4().set(1, 0, 0, 0, 0, 0, -1, 0, 0, 1, 0, 0, 0, 0, 0, 1);
+  const flat = ref.place.flat ? new THREE.Matrix4().set(1, 0, 0, 0, 0, 0, 1, 0, 0, -1, 0, spec.H / 2, 0, 0, 0, 1) : new THREE.Matrix4();
+  const laid = new THREE.Matrix4().makeRotationZ(THREE.MathUtils.degToRad(ref.place.angle)).setPosition(ref.place.x, ref.place.y, 0);
+  const [ox, oy, oz] = ref.origin;
+  const toMesh = new THREE.Matrix4().set(1, 0, 0, -ox, 0, 0, 1, -oy, 0, -1, 0, oz, 0, 0, 0, 1);
+  const local = toMesh.multiply(laid).multiply(flat).multiply(toPrint);
+  return { key: JSON.stringify([spec, ref.piece]), ...exact, transform: profileTransformForShape(shape, local) };
 }
 
 /**

@@ -6,7 +6,7 @@ import { energyChainExtents, energyChainLayout, energyChainPieces, placedChainPi
 import { t } from "@/lib/i18n";
 import { createLocalId } from "@/lib/localIds";
 import { canonicalizeShape } from "@/lib/workplaneShapes";
-import type { EnergyChainSettings, WorkplaneShape } from "@/types/layerling";
+import type { EnergyChainPartRef, EnergyChainSettings, WorkplaneShape } from "@/types/layerling";
 
 const CHAIN_COLOR = "#3d7cc9";
 const END_COLOR = "#7a8696";
@@ -26,7 +26,9 @@ export function energyChainName(settings: EnergyChainSettings) {
  * An energy chain as a new group standing on the plate's middle: its links laid in the spiral they are
  * printed in, each a body of its own a play's width from the next, and its end pieces - or every piece on
  * its own in rows, to be snapped together (lib/energyChain.ts).
- * The print frame (x, y on the plate, z up) becomes the design's (x, z towards the viewer, y up).
+ * The print frame (x, y on the plate, z up) becomes the design's (x, z towards the viewer, y up). Every piece
+ * is an exact CAD body: it carries what it is and where it lay, and the CAD kernel builds it from the same outlines
+ * with true arcs (cadModifierEnergyChainForShape).
  */
 export async function energyChainShape(input: EnergyChainSettings): Promise<WorkplaneShape> {
   const settings = normalizeEnergyChain(input) ?? DEFAULT_ENERGY_CHAIN;
@@ -61,7 +63,14 @@ export async function energyChainShape(input: EnergyChainSettings): Promise<Work
     const name = place.piece === "link" ? t("energyChain.link", { number: ++linkNumber }) : names[place.piece];
     const part = clearanceMeshShape(createLocalId("chain-part"), name, place.piece === "link" ? CHAIN_COLOR : END_COLOR, world);
     if (!part) throw new Error(t("energyChain.failed"));
-    return canonicalizeShape(part);
+    // What it is and where it lay, for the CAD kernel's exact body: the print frame's point that is the mesh's middle.
+    const energyChainPart: EnergyChainPartRef = {
+      settings,
+      piece: place.piece,
+      place: { x: place.x, y: place.y, angle: place.angle, ...(place.flat ? { flat: true } : {}) },
+      origin: [midX + part.x, part.elevation ?? 0, midY - part.z],
+    };
+    return canonicalizeShape({ ...part, energyChainPart });
   });
   const group = groupedShape(parts);
   if (!group) throw new Error(t("energyChain.failed"));

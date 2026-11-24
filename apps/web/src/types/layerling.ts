@@ -1706,6 +1706,12 @@ export type WorkplaneShape = {
    */
   energyChain?: EnergyChainSettings;
   /**
+   * On each link and end piece of an energy chain: what it is and where it was laid, so that the CAD kernel builds
+   * it as the exact body its mesh draws (lib/energyChainGeometry.ts). `origin` is where the piece's own frame sat
+   * against the mesh's middle when it was made.
+   */
+  energyChainPart?: EnergyChainPartRef;
+  /**
    * Set on a body made by wrapping around a cylinder (#106): its box is
    * centred on the cylinder's axis, and aligning, snapping and centring use
    * that box rather than the arc the mesh actually covers.
@@ -2023,6 +2029,12 @@ export type EnergyChainSize = "10x15" | "10x20" | "15x20" | "15x30" | "20x25" | 
 export type EnergyChainEnd = "none" | "attached" | "separate";
 /** Printed as one chain in a spiral, or link by link, laid in rows to snap together (several colours, say). */
 export type EnergyChainPrint = "spiral" | "pieces";
+export type EnergyChainPartRef = {
+  settings: EnergyChainSettings;
+  piece: "link" | "start" | "end";
+  place: { x: number; y: number; angle: number; flat?: boolean };
+  origin: [number, number, number];
+};
 export type EnergyChainSettings = {
   size: EnergyChainSize;
   /** Only for "custom": the room inside, in mm. */

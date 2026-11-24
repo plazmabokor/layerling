@@ -366,6 +366,28 @@ export type CadModifierHirthPart = {
 };
 
 /**
+ * A piece of an energy chain (a link or an end piece), as the exact body its display mesh draws: the same outlines,
+ * every round in them a true arc. Built in the piece's own frame - the chain's print frame turned y up: x along the
+ * chain, y across its width (the print frame's z, the bed at 0), z the print frame's -y - from its layers, each a set
+ * of outlines (outer loop first, its openings after) pushed up from `y0` to `y1`; its pins, upright cylinders cut
+ * by the 45 degree plane of their slide-on chamfer; and an end piece's tongue with two countersunk screw holes.
+ * `key` names the piece's build: the same key is the same body. `transform` places it.
+ */
+export type CadModifierEnergyChainPart = {
+  key: string;
+  /**
+   * A layer with `within` is what the outlines of the layer `within` (by index) and its own outlines have in common,
+   * over its own height - the thin layer joining a link's outer and inner plate - less a round of `free.radius` at
+   * `free.x` (round the rear pin).
+   */
+  layers: Array<{ y0: number; y1: number; outlines: CadModifierProfileLoop[][]; within?: number; free?: { x: number; radius: number } }>;
+  pins: Array<{ x: number; radius: number; y0: number; y1: number; chamferSide: 1 | -1; chamfer: number }>;
+  tongue?: { x0: number; x1: number; z0: number; z1: number; width: number; holes: number[]; hole: number; head: number };
+  transform?: number[];
+  expected?: { bounds: number[]; volume: number };
+};
+
+/**
  * A Gridfinity bin or baseplate, as the exact body its display mesh draws:
  * the size and settings it is built from (`gridfinityPlan`), in the shape's
  * own frame (y up, the bottom at y = 0, centred on x and z); `transform`
@@ -488,6 +510,8 @@ export type CadModifierMeshPart = {
   gridfinity?: CadModifierGridfinityPart;
   /** A Hirth joint's exact body; positions/indices (if any) are only the fallback if it cannot be built. */
   hirth?: CadModifierHirthPart;
+  /** A piece of an energy chain's exact body; positions/indices (if any) are only the fallback if it cannot be built. */
+  energyChain?: CadModifierEnergyChainPart;
   /** A screw boss's, snap-fit's or rib's exact body; positions/indices (if any) are only the fallback if it cannot be built. */
   enclosure?: CadModifierEnclosurePart;
   primitive?: CadModifierPrimitivePart;

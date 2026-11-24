@@ -32,6 +32,7 @@ import { gridfinityPartSolid } from "@/lib/gridfinitySolid";
 import { checkedHoleCut, fuzzyFuse, tidiedIfValid } from "@/lib/cadFuzzyCut";
 import { helicalGearPartSolid } from "@/lib/gearSolid";
 import { hirthPartSolid } from "@/lib/hirthSolid";
+import { energyChainPartSolid } from "@/lib/energyChainSolid";
 import { ENCLOSURE_PART_NAMES, enclosurePartSolid } from "@/lib/enclosureSolid";
 import { meshTreatedBody } from "@/lib/cadMeshAccuracy";
 import { tessellateWithRuledStrips } from "@/lib/cadRuledStrips";
@@ -411,6 +412,23 @@ function reconstructSolid(cad: OcctKernel, part: CadModifierMeshPart) {
       if (!part.positions || !part.indices) {
         const reason = error instanceof Error ? error.message : String(error ?? "");
         throw new Error(`This Hirth joint could not be built as an exact body, and its mesh is too dense for edge treatment. ${reason}`.trim());
+      }
+    }
+  }
+  if (part.energyChain) {
+    try {
+      const placed = applyCadTransform(cad, energyChainPartSolid(cad, part.energyChain), part.energyChain.transform);
+      if (!cadShapeIsValid(cad, placed)) throw new Error("The exact energy chain piece is not valid after placing it");
+      const mismatch = cadProfileSolidMismatch(cad, placed, part.energyChain.expected);
+      if (mismatch) throw new Error(`The exact energy chain piece does not match the shape (${mismatch})`);
+      exactProfileBodiesUsed += 1;
+      return placed;
+    } catch (error) {
+      // As for a profile: with its mesh along, the part goes the way it always went.
+      if (isFatalKernelFault(error)) throw error;
+      if (!part.positions || !part.indices) {
+        const reason = error instanceof Error ? error.message : String(error ?? "");
+        throw new Error(`This energy chain piece could not be built as an exact body, and its mesh is too dense for edge treatment. ${reason}`.trim());
       }
     }
   }
@@ -838,14 +856,14 @@ function reconstructPartsWithFallback(cad: OcctKernel, parts: CadModifierMeshPar
   try {
     return reconstructParts(cad, parts);
   } catch (error) {
-    const exactParts = parts.filter((part) => part.profile || part.step || part.thread || part.spring || part.helicalGear || part.gridfinity || part.hirth || part.enclosure);
+    const exactParts = parts.filter((part) => part.profile || part.step || part.thread || part.spring || part.helicalGear || part.gridfinity || part.hirth || part.energyChain || part.enclosure);
     if (
       isFatalKernelFault(error) ||
       exactProfileBodiesUsed === 0 ||
       exactParts.some((part) => !part.positions || !part.indices)
     ) throw error;
     releaseSession(cad);
-    return reconstructParts(cad, parts.map((part) => (part.profile || part.step || part.thread || part.spring || part.helicalGear || part.gridfinity || part.hirth || part.enclosure ? { ...part, profile: undefined, step: undefined, thread: undefined, spring: undefined, helicalGear: undefined, gridfinity: undefined, hirth: undefined, enclosure: undefined } : part)));
+    return reconstructParts(cad, parts.map((part) => (part.profile || part.step || part.thread || part.spring || part.helicalGear || part.gridfinity || part.hirth || part.energyChain || part.enclosure ? { ...part, profile: undefined, step: undefined, thread: undefined, spring: undefined, helicalGear: undefined, gridfinity: undefined, hirth: undefined, energyChain: undefined, enclosure: undefined } : part)));
   }
 }
 
