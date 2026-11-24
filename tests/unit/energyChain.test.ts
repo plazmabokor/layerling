@@ -95,6 +95,38 @@ describe("energy chain geometry", () => {
     }
   }, 120000);
 
+  for (const [name, patch] of [
+    ["10x20", { size: "10x20" }],
+    ["15x30", { size: "15x30" }],
+    ["20x25", { size: "20x25" }],
+    ["one's own 6x6, play 0.2", { size: "custom", innerHeight: 6, innerWidth: 6, play: 0.2 }],
+    ["one's own 6x6, play 0.8", { size: "custom", innerHeight: 6, innerWidth: 6, play: 0.8 }],
+    ["one's own 30x60, play 0.2", { size: "custom", innerHeight: 30, innerWidth: 60, play: 0.2 }],
+    ["one's own 30x60, play 0.8", { size: "custom", innerHeight: 30, innerWidth: 60, play: 0.8 }],
+    ["one's own 12x20 (its channel clear)", { size: "custom", innerHeight: 12, innerWidth: 20 }],
+    ["10x15, play 0.8", { size: "10x15", play: 0.8 }],
+  ] as const) {
+    it(`${name}: free between the stops, caught by them just past both ends, the end pieces turning as freely, the channel clear`, async () => {
+      const spec = energyChainSpec(settings(patch as Partial<EnergyChainSettings>));
+      const pieces = await energyChainPieces(runtime, spec);
+      const [link, start, end] = [solid(pieces.link), solid(pieces.start), solid(pieces.end)];
+      for (const piece of [link, start, end]) expect(piece.decompose()).toHaveLength(1);
+      const next = (theta: number) => link.rotate([0, 0, theta]).translate([spec.P, 0, 0]);
+      for (let theta = spec.th0; theta <= spec.th1 + 1e-9; theta += 1) {
+        expect(link.intersect(next(theta)).volume()).toBeLessThan(1e-3);
+        // The last link into the moving end piece, the first one out of the fixed one.
+        expect(end.intersect(link.translate([-spec.P, 0, 0]).rotate([0, 0, -theta])).volume()).toBeLessThan(1e-3);
+        expect(start.intersect(link.rotate([0, 0, theta])).volume()).toBeLessThan(1e-3);
+      }
+      // However wide the play, the stops catch within 3 degrees past straight and past the smallest radius.
+      expect(link.intersect(next(-3)).volume()).toBeGreaterThan(0.02);
+      expect(link.intersect(next(spec.thetaMax + 3)).volume()).toBeGreaterThan(0.02);
+      // Nothing of a link in the channel.
+      const channel = runtime.Manifold.cube([spec.P + 2 * spec.Ro, spec.h - 0.02, spec.z.S3[1] - spec.z.S3[0] - 0.02]).translate([-spec.Ro, -spec.h / 2 + 0.01, spec.z.S3[0] + 0.01]);
+      expect(link.intersect(channel).volume()).toBeLessThan(1e-3);
+    }, 120000);
+  }
+
   it("prints a metre with both ends in place: every piece apart from every other", async () => {
     const chain = settings({ lengthCm: 100, start: "attached", end: "attached" });
     const spec = energyChainSpec(chain);

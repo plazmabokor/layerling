@@ -366,21 +366,27 @@ export type CadModifierHirthPart = {
 };
 
 /**
- * A piece of an energy chain (a link or an end piece), as the exact body its display mesh draws: the same outlines,
- * every round in them a true arc. Built in the piece's own frame - the chain's print frame turned y up: x along the
- * chain, y across its width (the print frame's z, the bed at 0), z the print frame's -y - from its layers, each a set
- * of outlines (outer loop first, its openings after) pushed up from `y0` to `y1`; its pins, upright cylinders cut
- * by the 45 degree plane of their slide-on chamfer; and an end piece's tongue with two countersunk screw holes.
+ * A flat figure of an energy chain piece's layer, made of exact parts: closed outlines of lines and true arcs
+ * (circles, boxes, a box turned about a pin, a sector, a D-shaped plate), joined, cut away and taken in common.
+ * The same figure gives the display mesh (its arcs drawn finely) and the CAD body (its arcs exact), so the two are
+ * one shape (lib/energyChainShapes.ts builds them). Outlines lie in the kernel's X/Z plane: z is the print frame's -y.
+ */
+export type ChainFigure =
+  | { kind: "outline"; loop: CadModifierProfileLoop }
+  | { kind: "union"; of: ChainFigure[] }
+  | { kind: "cut"; from: ChainFigure; minus: ChainFigure[] }
+  | { kind: "common"; of: ChainFigure[] };
+
+/**
+ * A piece of an energy chain (a link or an end piece) as an exact body. Built in the piece's own frame - the
+ * chain's print frame turned y up: x along the chain, y across its width (the print frame's z, the bed at 0), z the
+ * print frame's -y - from its layers, each a figure pushed up from `y0` to `y1`; its pins, upright cylinders cut by
+ * the 45 degree plane of their slide-on chamfer; and an end piece's tongue with two countersunk screw holes.
  * `key` names the piece's build: the same key is the same body. `transform` places it.
  */
 export type CadModifierEnergyChainPart = {
   key: string;
-  /**
-   * A layer with `within` is what the outlines of the layer `within` (by index) and its own outlines have in common,
-   * over its own height - the thin layer joining a link's outer and inner plate - less a round of `free.radius` at
-   * `free.x` (round the rear pin).
-   */
-  layers: Array<{ y0: number; y1: number; outlines: CadModifierProfileLoop[][]; within?: number; free?: { x: number; radius: number } }>;
+  layers: Array<{ y0: number; y1: number; figure: ChainFigure }>;
   pins: Array<{ x: number; radius: number; y0: number; y1: number; chamferSide: 1 | -1; chamfer: number }>;
   tongue?: { x0: number; x1: number; z0: number; z1: number; width: number; holes: number[]; hole: number; head: number };
   transform?: number[];

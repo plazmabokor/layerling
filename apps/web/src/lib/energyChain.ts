@@ -107,13 +107,11 @@ export type EnergyChainSpec = {
   chamfer: number;
   /** Radius round the rear pin inside which the outer plates are free to bend out. */
   free: number;
-  /** How far the inner plates' square bottom (heel) and top (lug) front corners reach past the pin. */
+  /** How far the inner plates' square bottom (heel) and top (lug) front corners reach past the pin: always far enough to stand out of the next link's hollow (its round a play wider) and catch it. */
   heel: number;
   lug: number;
   /** The outer plates' corners are rounded this much. */
   rounding: number;
-  /** Degrees between the copies of a part turned through a joint: its corners near the pin stay within ~0.35 mm. */
-  sweepStep: number;
   /** z of the seven slabs: outer plate, gap, inner plate, the channel walls, inner plate, gap, outer plate. */
   z: Record<ChainSlab, [number, number]>;
 };
@@ -143,6 +141,8 @@ export function energyChainSpec(settings: EnergyChainSettings): EnergyChainSpec 
   const bendRadius = energyChainBendRadius(h);
   const thetaMax = (2 * Math.asin(P / (2 * (bendRadius + H / 2))) * 180) / Math.PI;
   const degrees = 180 / Math.PI;
+  // How far a corner must reach past the pin to stand `depth` out of the hollow (a play wider than the round) it turns in.
+  const reachFor = (depth: number) => Math.ceil(Math.sqrt((Ro + play + depth) ** 2 - Ro * Ro) * 10) / 10;
   const z: Record<ChainSlab, [number, number]> = {
     S0: [0, T],
     S1: [T, T + play],
@@ -161,11 +161,12 @@ export function energyChainSpec(settings: EnergyChainSettings): EnergyChainSpec 
     pinPlay: 0.3,
     engage: 1.0,
     chamfer: 0.5,
-    free: round1(0.7 * H),
-    heel: round1(0.235 * H),
-    lug: round1(0.3 * H),
+    // Never within a millimetre of the front hollow's back (a play wider than the round), where the two would all but touch.
+    free: Math.abs(round1(0.7 * H) - (P - Ro - play)) < 1 ? Math.floor((P - Ro - play - 1) * 10) / 10 : round1(0.7 * H),
+    // The measured chain's corners, larger where the play would let them slip past the hollow they turn in.
+    heel: Math.max(round1(0.235 * H), reachFor(0.35)),
+    lug: Math.max(round1(0.3 * H), reachFor(0.8)),
     rounding: 1,
-    sweepStep: Math.min(2, (0.35 / (1.2 * Ro)) * degrees),
     z,
   };
 }

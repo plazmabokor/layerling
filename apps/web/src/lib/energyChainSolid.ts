@@ -1,14 +1,13 @@
 import type { OcctKernel, ShapeHandle } from "occt-wasm";
-import type { CadModifierEnergyChainPart } from "@/lib/cadModifierTypes";
-
-type CadModifierPart = CadModifierEnergyChainPart;
+import type { CadModifierEnergyChainPart, ChainFigure } from "@/lib/cadModifierTypes";
 import { profileExtrusionSolid } from "@/lib/cadProfileSolid";
 
 /*
- * The exact body of an energy chain piece (lib/energyChainGeometry.ts works out its outlines), in the piece's own
- * frame, y up (see CadModifierEnergyChainPart). Every layer is its outlines pushed up; the layers touch, the pins
- * stand on theirs, and all of it is fused into one solid. A chain repeats one link many times, so a piece built once
- * is kept - as its BREP text, since the worker lets go of every shape after each job - and read back.
+ * The exact body of an energy chain piece, in the piece's own frame, y up (see CadModifierEnergyChainPart): every
+ * layer is its figure (lib/energyChainShapes.ts) built with true arcs - each outline pushed up the layer's height,
+ * joined, cut away and taken in common as the figure says - and the layers, the pins on theirs and the tongue are
+ * fused into one solid. A chain repeats one link many times, so a piece built once is kept - as its BREP text,
+ * since the worker lets go of every shape after each job - and read back.
  */
 
 const built = new Map<string, string>();
@@ -31,27 +30,43 @@ export function energyChainPartSolid(cad: OcctKernel, part: CadModifierEnergyCha
   return solid;
 }
 
+/** A figure pushed up `height` from y = 0; null when nothing is left of it. */
+function figureSolid(cad: OcctKernel, figure: ChainFigure, height: number): ShapeHandle | null {
+  switch (figure.kind) {
+    case "outline":
+      return profileExtrusionSolid(cad, { kind: "extrusion", loops: [figure.loop], height });
+    case "union": {
+      const parts = figure.of.map((part) => figureSolid(cad, part, height)).filter((part): part is ShapeHandle => part !== null);
+      if (!parts.length) return null;
+      return parts.length === 1 ? parts[0] : cad.fuseAll(parts);
+    }
+    case "common": {
+      let result: ShapeHandle | null = null;
+      for (const part of figure.of) {
+        const solid = figureSolid(cad, part, height);
+        if (!solid) return null;
+        result = result ? cad.common(result, solid) : solid;
+      }
+      return result && cad.getVolume(result) > 1e-9 ? result : null;
+    }
+    case "cut": {
+      const from = figureSolid(cad, figure.from, height);
+      if (!from) return null;
+      const minus = figure.minus.map((part) => figureSolid(cad, part, height)).filter((part): part is ShapeHandle => part !== null);
+      if (!minus.length) return from;
+      const result = cad.cut(from, minus.length === 1 ? minus[0] : cad.fuseAll(minus));
+      return cad.getVolume(result) > 1e-9 ? result : null;
+    }
+  }
+}
+
 function buildPiece(cad: OcctKernel, part: CadModifierEnergyChainPart): ShapeHandle {
   const solids: ShapeHandle[] = [];
-  const prism = (loops: CadModifierPart["layers"][number]["outlines"][number], y0: number, height: number) => cad.translate(profileExtrusionSolid(cad, { kind: "extrusion", loops, height }), 0, y0, 0);
   for (const layer of part.layers) {
     const height = layer.y1 - layer.y0;
     if (!(height > 0)) throw new Error("An energy chain layer has no height");
-    if (layer.within === undefined) {
-      for (const loops of layer.outlines) solids.push(prism(loops, layer.y0, height));
-      continue;
-    }
-    // The thin layer: the plate's own outline (its very edges), within its own outlines, over its own height.
-    for (const outer of part.layers[layer.within].outlines) {
-      for (const own of layer.outlines) {
-        let common = cad.common(prism(outer, layer.y0, height), prism(own, layer.y0, height));
-        if (layer.free) {
-          const round = cad.translate(cad.rotate(cad.makeCylinder(layer.free.radius, height + 2), { point: { x: 0, y: 0, z: 0 }, direction: { x: 1, y: 0, z: 0 } }, -Math.PI / 2), layer.free.x, layer.y0 - 1, 0);
-          common = cad.cut(common, round);
-        }
-        for (const solid of cad.getSubShapes(common, "solid")) if (cad.getVolume(solid) > 0.05) solids.push(solid);
-      }
-    }
+    const solid = figureSolid(cad, layer.figure, height);
+    if (solid) solids.push(cad.translate(solid, 0, layer.y0, 0));
   }
   for (const pin of part.pins) {
     // An upright cylinder (z up turned to y up), cut on one side of its top by the chamfer's plane.
@@ -75,7 +90,7 @@ function buildPiece(cad: OcctKernel, part: CadModifierEnergyChainPart): ShapeHan
   }
   body = cad.unifySameDomain(body);
   const pieces = cad.isSolid(body) ? [body] : cad.getSubShapes(body, "solid");
-  if (pieces.length !== 1) throw new Error(`The energy chain piece came out as ${pieces.length} solids (${pieces.map((piece) => cad.getVolume(piece).toFixed(1) + " @" + JSON.stringify(Object.values(cad.getBoundingBox(piece)).map((v) => Number(v).toFixed(1)))).join(", ")} mm³)`);
+  if (pieces.length !== 1) throw new Error(`The energy chain piece came out as ${pieces.length} solids (${pieces.map((piece) => cad.getVolume(piece).toFixed(1)).join(", ")} mm³)`);
   if (!cad.isValid(pieces[0]) || !(cad.getVolume(pieces[0]) > 0)) throw new Error("The energy chain piece is not a valid solid");
   return pieces[0];
 }

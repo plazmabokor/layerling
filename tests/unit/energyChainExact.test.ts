@@ -72,6 +72,32 @@ describe("energy chain as exact bodies", () => {
     }, 300000);
   }
 
+  for (const [name, patch] of [
+    ["10x15", {}],
+    ["20x25", { size: "20x25" }],
+    ["one's own 30x60, play 0.2", { size: "custom", innerHeight: 30, innerWidth: 60, play: 0.2 }],
+    ["one's own 6x6, play 0.8", { size: "custom", innerHeight: 6, innerWidth: 6, play: 0.8 }],
+  ] as const) {
+    it(`${name}: every piece a valid solid of true lines and arcs, no hairline edges, the link free between the stops`, async () => {
+      const spec = energyChainSpec(settings(patch as Partial<EnergyChainSettings>));
+      const pieces = (await energyChainPieces(manifold.runtime as never, spec))!;
+      for (const kind of ["link", "start", "end"] as const) {
+        const body = energyChainPartSolid(cad, { key: `${name}-${kind}`, ...pieces.exact[kind] });
+        expect(cad.isValid(body)).toBe(true);
+        expect(cad.getSubShapes(body, "solid")).toHaveLength(1);
+        const edges = cad.getSubShapes(body, "edge");
+        // Where two edges meet they meet at a point worked out exactly: none is a sliver left between them.
+        expect(Math.min(...edges.map((edge) => cad.curveLength(edge)))).toBeGreaterThanOrEqual(0.2 - 1e-6);
+        expect(edges.every((edge) => ["line", "circle", "ellipse"].includes(cad.curveType(edge)))).toBe(true);
+      }
+      const link = energyChainPartSolid(cad, { key: `${name}-link`, ...pieces.exact.link });
+      const next = (degrees: number) => cad.translate(cad.rotate(link, { point: { x: 0, y: 0, z: 0 }, direction: { x: 0, y: 1, z: 0 } }, (degrees * Math.PI) / 180), spec.P, 0, 0);
+      for (let theta = spec.th0; theta <= spec.th1 + 1e-9; theta += 4) expect(cad.getVolume(cad.common(link, next(theta)))).toBeLessThan(1e-3);
+      expect(cad.getVolume(cad.common(link, next(-3)))).toBeGreaterThan(0.02);
+      expect(cad.getVolume(cad.common(link, next(spec.thetaMax + 3)))).toBeGreaterThan(0.02);
+    }, 300000);
+  }
+
   it("a link turns as freely as its mesh: nothing in common between the stops, the stops hold beyond", async () => {
     const spec = energyChainSpec(settings({}));
     const pieces = await energyChainPieces(manifold.runtime as never, spec).catch(() => null);
